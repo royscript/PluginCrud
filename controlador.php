@@ -59,6 +59,21 @@ if($_POST["accion"]=="listar"){
 	header("Content-Length: ".$pesoBytesDatos);//Le dice al cliente cuanto pesaran los datos que va a recibir para la barra de progreso
 	
 	echo $datos;	
+}else if($_POST["accion"]=="modificar"){
+	
+	
+	$jTableResult = array();
+	$jTableResult['Resultado'] = "OK";
+	$jTableResult['Message'] = "Error ejemplo";
+	$jTableResult = json_encode($jTableResult);
+	$pesoBytesDatos = mb_strlen($jTableResult);//Obtiene el peso en bytes de los datos que tendra que descargar el cliente
+	
+	//Generamos las cabeceras
+	header('Content-Type: application/json');
+	header("Content-Transfer-Encoding: gzip");
+	header("Content-Length: ".$pesoBytesDatos);//Le dice al cliente cuanto pesaran los datos que va a recibir para la barra de progreso
+	
+	echo $jTableResult;
 }
 $conexion->cerrarConexion();
 
