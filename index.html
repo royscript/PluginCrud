@@ -99,6 +99,7 @@ columnas.push({
 													//			Ej : formulariop.elements[i].value	//Obtiene el valor del campo en la posicion i
 													//pk : obtiene el valo id/Primari Key del campo
 													if(pk==null){//Es Ingresar
+														console.log(datosAjax.NUMERO_BOLETA_TALONARIO+"=="+valorActual);
 														if(datosAjax.NUMERO_BOLETA_TALONARIO==valorActual){
 															return { resultado : false, mensaje : 'Error : El número de denuncio ingresado ya esta ocupado.' };
 														}else{
@@ -106,6 +107,7 @@ columnas.push({
 														}
 
 													}else{//Es modificar
+														console.log(datosAjax.NUMERO_BOLETA_TALONARIO+"=="+valorActual+" || "+datosAjax.ID_DENUNCIO+" != "+pk);
 														if(datosAjax.NUMERO_BOLETA_TALONARIO==valorActual || datosAjax.ID_DENUNCIO != pk){
 															return { resultado : false, mensaje : 'Error : El número de denuncio ingresado ya esta ocupado.' };
 														}else{
@@ -138,7 +140,7 @@ columnas.push({
 						}
 	},
 	numeroFila : 1,
-	contenedor: 1,
+	contenedor: 1/*,
 	onblur : function(event){
 		console.log("oblur El valor del input es "+event.value);
 	},
@@ -150,7 +152,7 @@ columnas.push({
 	},
 	keyDown : function(event){
 		console.log("keyDown El valor del input es "+event.value);
-	}
+	}*/
 });
 /*
 columnas.push({
