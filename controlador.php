@@ -60,11 +60,56 @@ if($_POST["accion"]=="listar"){
 	
 	echo $datos;	
 }else if($_POST["accion"]=="modificar"){
+	//print_r($_FILES["Archivo"]);
+	
+	$jTableResult = array();
+	$jTableResult['Resultado'] = "OK";
+	$jTableResult['Message'] = "Error ejemplo";
+	$jTableResult = json_encode($jTableResult);
+	$pesoBytesDatos = mb_strlen($jTableResult);//Obtiene el peso en bytes de los datos que tendra que descargar el cliente
+	
+	//Generamos las cabeceras
+	header('Content-Type: application/json');
+	header("Content-Transfer-Encoding: gzip");
+	header("Content-Length: ".$pesoBytesDatos);//Le dice al cliente cuanto pesaran los datos que va a recibir para la barra de progreso
+	
+	echo $jTableResult;
+}else if($_POST["accion"]=="crear"){
 	
 	
 	$jTableResult = array();
 	$jTableResult['Resultado'] = "OK";
 	$jTableResult['Message'] = "Error ejemplo";
+	$jTableResult = json_encode($jTableResult);
+	$pesoBytesDatos = mb_strlen($jTableResult);//Obtiene el peso en bytes de los datos que tendra que descargar el cliente
+	
+	//Generamos las cabeceras
+	header('Content-Type: application/json');
+	header("Content-Transfer-Encoding: gzip");
+	header("Content-Length: ".$pesoBytesDatos);//Le dice al cliente cuanto pesaran los datos que va a recibir para la barra de progreso
+	
+	echo $jTableResult;
+}else if($_POST["accion"]=="eliminar"){
+	
+	
+	$jTableResult = array();
+	$jTableResult['Resultado'] = "OK";
+	$jTableResult['Message'] = "Error ejemplo";
+	$jTableResult = json_encode($jTableResult);
+	$pesoBytesDatos = mb_strlen($jTableResult);//Obtiene el peso en bytes de los datos que tendra que descargar el cliente
+	
+	//Generamos las cabeceras
+	header('Content-Type: application/json');
+	header("Content-Transfer-Encoding: gzip");
+	header("Content-Length: ".$pesoBytesDatos);//Le dice al cliente cuanto pesaran los datos que va a recibir para la barra de progreso
+	
+	echo $jTableResult;
+}else if($_POST["accion"]=="boletaSinRepetir"){
+	
+	
+	$jTableResult = array();
+	$jTableResult['Resultado'] = "OK";
+	$jTableResult['Registros'] = array("ID_DENUNCIO"=>17, "NUMERO_BOLETA_TALONARIO"=>28262);
 	$jTableResult = json_encode($jTableResult);
 	$pesoBytesDatos = mb_strlen($jTableResult);//Obtiene el peso en bytes de los datos que tendra que descargar el cliente
 	

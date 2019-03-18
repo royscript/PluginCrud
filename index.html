@@ -37,6 +37,23 @@ tabla.setClassTable("table table-striped table-sm");
 //Titulo de la tabla
 tabla.setTituloTabla("Tabla denuncios");
 tabla.ordenacionPorDefecto("DENUNCIO.ID_DENUNCIO");
+//Agregar botones
+//Propiedades botones : 
+//	{
+//		nombreBoton : "Excel",
+//		Class : "botonExcel", //si se pone null esta propiedad tomara por defecto el estilo boton bootstrap
+//		onClick : "pasarAExcel()",//Si se pone null esta propiedad no agregara el evento
+//	}		
+
+tabla.agregarBoton({
+	nombreBoton : "Excel",
+	Class : "botonExcel",
+	onClick : "pasarAExcel()",
+});
+
+//El siguiente codigo es para quitar el boton automatico de agregar
+//tabla.quitarAgregar(true);
+
 //Agregar columnas
 var columnas = new Array();
 //Si no se ponen los nombres de los contenedores no aparecerán los nombres de contenedores
@@ -46,25 +63,94 @@ columnas.push({
 	nombre : "Id",
 	aliasJson : "ID_DENUNCIO",
 	nombreCampoOriginal : "DENUNCIO.ID_DENUNCIO",
-	mostrar : function(){ 
-						return ''+tabla.getRegistro()+"#"; 
+	mostrar : function(registros){ 
+						return ''+registros.ID_DENUNCIO+"# "+registros.LUGAR_INFRACCION; 
 	},
 	pk : true,
 	indice : null,//Esto siempre es null
 	listar: true,
-	ingresar: true,
+	ingresar: false,
+	modificar : false,
 	numeroFila : 1,//Indica : en la fila 1 estará esto y los que tengan 1
 	contenedor: 1//Esto indica que en el contenedor 1 estarán todos los registros que tengan este campo con 1
 });
 columnas.push({
-	nombre : "Lugar",
+	nombre : "Boleta #",
+	aliasJson : "NUMERO_BOLETA_TALONARIO",
+	nombreCampoOriginal : "DENUNCIO.NUMERO_BOLETA_TALONARIO",
+	indice : null,//Esto siempre es null
+	campoObligatorio : false,
+	listar: true,
+	ingresar: true,
+	modificar : true,
+	validacionAjax : function(){//Esto permite que no se repita el registro
+							return {
+									url : 'controlador.php', 
+									accion : 'boletaSinRepetir', 
+									datoEnviar : "ID_DENUNCIO",
+									validacion : function(datosAjax,datosFila, valorActual, formulario, pk) {
+													//datosAjax : son los datos que bienen de ajax
+													//			Ej : datosAjax.NUMERO_BOLETA_TALONARIO
+													//datosFila : son los datos originales de la fila sin ser modificados por el formulario
+													//			Ej: datosFila.NUMERO_BOLETA_TALONARIO
+													//valorActual : es el valor actual del input
+													//formulario : contiene los elementos del formulario
+													//			Ej : formulariop.elements[i].name  //Obtiene el nombre del campo en la posicion i
+													//			Ej : formulariop.elements[i].value	//Obtiene el valor del campo en la posicion i
+													//pk : obtiene el valo id/Primari Key del campo
+													if(pk==null){//Es Ingresar
+														if(datosAjax.NUMERO_BOLETA_TALONARIO==valorActual){
+															return { resultado : false, mensaje : 'Error : El número de denuncio ingresado ya esta ocupado.' };
+														}else{
+															return { resultado : true };
+														}
+
+													}else{//Es modificar
+														if(datosAjax.NUMERO_BOLETA_TALONARIO==valorActual || datosAjax.ID_DENUNCIO != pk){
+															return { resultado : false, mensaje : 'Error : El número de denuncio ingresado ya esta ocupado.' };
+														}else{
+															return { resultado : true };
+														}
+													}
+													
+												 }
+									};//Es erroneo
+				},
+	numeroFila : 1,//Indica : en la fila 1 estará esto y los que tengan 1
+	contenedor: 1//Esto indica que en el contenedor 1 estarán todos los registros que tengan este campo con 1
+});
+columnas.push({
+	nombre : "Lugar denuncio",
 	aliasJson : "LUGAR_INFRACCION",
 	nombreCampoOriginal : "DENUNCIO.LUGAR_INFRACCION",
 	indice : null,
 	listar: false,
 	ingresar: true,
+	modificar : true,
+	campoObligatorio : true,
+	mensajeErrorCampoObligatorio : "Tienes que ingresar roy",
+	validacionExtra : function(dato){ //Aca se rescatan los campos del formulario por eso se ejemplifico con .value
+						//console.log(dato);
+						if(dato["Lugar denuncio"].value=="roy"){
+							return true;//Esta validado
+						}else{
+							return false;//Es erroneo
+						}
+	},
 	numeroFila : 1,
-	contenedor: 1
+	contenedor: 1,
+	onblur : function(event){
+		console.log("oblur El valor del input es "+event.value);
+	},
+	keyPress : function(event){
+		console.log("keyPress El valor del input es "+event.value);
+	},
+	keyUp : function(event){
+		console.log("keyUp El valor del input es "+event.value);
+	},
+	keyDown : function(event){
+		console.log("keyDown El valor del input es "+event.value);
+	}
 });
 /*
 columnas.push({
@@ -74,8 +160,9 @@ columnas.push({
 	indice : null,
 	listar: false,
 	ingresar: true,
+	modificar : true,
 	inputPersonalizadoIngresar: function(dato){
-		return '<img src="descarga.png" alt="'+dato+'" 	 class="rounded">';
+		return '<img src="descarga.png" alt="'+dato.ID_INSPECTOR+'" 	 class="rounded">';
 	},
 	numeroFila : 1,
 	contenedor: 2
@@ -87,6 +174,8 @@ columnas.push({
 	indice : null,
 	listar: true,
 	ingresar: true,
+	modificar : true,
+	campoObligatorio : true,
 	numeroFila : 1,
 	contenedor: 2
 });
@@ -97,6 +186,8 @@ columnas.push({
 	indice : null,
 	listar: true,
 	ingresar: true,
+	modificar : true,
+	campoObligatorio : true,
 	numeroFila : 1,
 	contenedor: 2,
 	combobox : 'comboboxInspector'
@@ -108,9 +199,27 @@ columnas.push({
 	indice : null,
 	listar: true,
 	ingresar: true,
+	modificar : true,
+	campoObligatorio : true,
 	numeroFila : 2,
 	contenedor: 2,
 	combobox : 'comboboxInspector2'
+});
+columnas.push({
+	nombre : "Archivo",
+	aliasJson : "ID_INSPECTOR",
+	nombreCampoOriginal : "DENUNCIO.ID_INSPECTOR",
+	indice : null,
+	listar: false,
+	ingresar: true,
+	modificar : true,
+	campoObligatorio : true,
+	numeroFila : 2,
+	contenedor: 2,
+	archivo : true,//Esto indica que el tipo de dato para ingresar es un archivo
+	validacionExtra : true,//Si se quiere activar la validacion de tipo de archivos y tamaño maximo DEBES activar la validacion extra
+	tipoArchivos : ['image/jpeg', 'image/png'],
+	tamanoMaximoArchivoMB : 2 
 });
 
 
@@ -120,6 +229,11 @@ tabla.agregarColumnas(columnas);
 tabla.crearTabla();
 var datos = new Array();
 tabla.setUrlCargarDatos("controlador.php");
+//Crear combobox
+//EL primer parametro se pone el origen de datos, el segundo parametro es el nombre del combobox que no puede repetirse
+//El nombre del combobox hace referencia al campo de la columna combobox 
+//ejemplo : 	
+//			combobox : 'comboboxInspector2'
 tabla.ajaxCombobox("controlador.php","comboboxInspector");
 tabla.ajaxCombobox("controlador.php","comboboxInspector2");
 tabla.cargarDatos();

@@ -12,7 +12,6 @@ class tablaCrud{
 		this.registrosBD = new Array();
 		this.tituloTabla = "";
 		this.botonesmenuSuperior = new Array();
-		this.botonesmenuSuperior.push({ nombreBoton : "+ agregar"});
 		this.paginaActual = 1;
 		this.urlCargarDatos = null;
 		this.jtStartIndex = 0;
@@ -22,6 +21,11 @@ class tablaCrud{
 		this.datoRegistro = "";
 		this.contenedores = new Array();
 		this.combobox = new Array();
+		this.quitarBotonAgregar = false;
+	}
+	
+	agregarBoton(json){
+		this.botonesmenuSuperior.push(json);
 	}
 	
 	setCombobox(url,accion){
@@ -36,6 +40,10 @@ class tablaCrud{
 		this.jtSorting = valor;
 	}
 	
+	obtenerBotonAgregarRegistros(){
+		return this.contenedor.getElementsByTagName("table")[0].getElementsByTagName("thead")[0].getElementsByTagName("tr")[0].getElementsByTagName("th")[0].getElementsByTagName("div")[0].getElementsByTagName("button");
+	}	
+		
 	obtenerSelectPaginaActual(){
 		return this.contenedor.getElementsByTagName("table")[0].getElementsByTagName("tfoot")[0].getElementsByTagName("tr")[0].getElementsByTagName("th")[0].getElementsByTagName("ul")[0].getElementsByTagName("li")[2].getElementsByTagName("select")[0];
 	}
@@ -172,7 +180,16 @@ class tablaCrud{
 		}
 		
 	}
+	
+	quitarAgregar(valor){
+		this.quitarBotonAgregar = valor;
+	}
+	
 	crearTabla(){
+		if(this.quitarBotonAgregar==false){
+			this.botonesmenuSuperior.push({ nombreBoton : "+ agregar", funcionEspecial : "agregar"});
+		}
+		
 		this.contenedor.innerHTML = "";//Limpiamos el div de cualquier objeto
 		var tabla = document.createElement("table");
 		if(this.classTable!=null){
@@ -208,7 +225,16 @@ class tablaCrud{
 		for(var x=0;x<this.botonesmenuSuperior.length;x++){
 			var botonSuperior = document.createElement("button");
 			this.agregarAtributo(botonSuperior,"type","button");
-			this.agregarAtributo(botonSuperior,"class","btn btn-secondary");
+			if(this.botonesmenuSuperior[x].Class!=null){ //Si se le quiere agregar una clase adicional
+				this.agregarAtributo(botonSuperior,"class",this.botonesmenuSuperior[x].Class);
+			}else{
+				this.agregarAtributo(botonSuperior,"class","btn btn-secondary");
+			}
+			
+			if(this.botonesmenuSuperior[x].funcionEspecial!=null){ //Si se le quiere agregar una clase adicional
+				this.agregarAtributo(botonSuperior,"funcion-especial",this.botonesmenuSuperior[x].funcionEspecial);
+			}
+			if(this.botonesmenuSuperior[x].onClick!=null) this.agregarAtributo(botonSuperior,"onclick",this.botonesmenuSuperior[x].onClick);//sirve para llamar a una funcion
 			this.agregarTextoTagHtml(botonSuperior, this.botonesmenuSuperior[x].nombreBoton);
 			divBotonSuperior.appendChild(botonSuperior);
 			
@@ -433,6 +459,15 @@ class tablaCrud{
 				}
 			});
 		}
+		for(var x=0;x<this.botonesmenuSuperior.length;x++){
+			instanciaActual.obtenerBotonAgregarRegistros()[x].addEventListener("click", function(){
+				if(this.getAttribute("funcion-especial")!=null){
+					if(this.getAttribute("funcion-especial")=="agregar"){
+						instanciaActual.popup(instanciaActual.formulario_ingresar(),"crear",null);
+					}
+				}
+			});
+		}
 		this.agregarFooter();
 	}
 
@@ -505,7 +540,7 @@ class tablaCrud{
 						
 						
 						if(this.columnas[keyColumna].mostrar!=undefined){
-							columna.innerHTML = this.columnas[keyColumna].mostrar();
+							columna.innerHTML = this.columnas[keyColumna].mostrar(dato);
 						}else if(this.columnas[keyColumna].combobox!=undefined){
 							var nombreCombobox = this.columnas[keyColumna].combobox;
 							for(var keyCombo in this.combobox){
@@ -551,7 +586,7 @@ class tablaCrud{
 			this.agregarAtributo(iconoSorting,"style","cursor:pointer;");
 			this.agregarAtributo(iconoSorting,"pk",pk);
 			var path = document.createElement("i");
-			this.agregarAtributo(path,"class","fa fa-edit");
+			this.agregarAtributo(path,"class","fa fa-edit fa-lg");
 			
 			iconoSorting.appendChild(path);
 			columna.appendChild(iconoSorting);
@@ -564,7 +599,7 @@ class tablaCrud{
 			this.agregarAtributo(iconoSorting,"style","cursor:pointer;");
 			this.agregarAtributo(iconoSorting,"pk",pk);
 			var path = document.createElement("i");
-			this.agregarAtributo(path,"class","fa fa-trash");
+			this.agregarAtributo(path,"class","fa fa-trash fa-lg");
 			
 			iconoSorting.appendChild(path);
 			columna.appendChild(iconoSorting);
@@ -906,12 +941,20 @@ class tablaCrud{
 					var id = this.getAttribute("pk");
 					//console.log("Modificar "+id);
 					//console.log(instanciaActual.formulario_modificar(id));
-					instanciaActual.popup(instanciaActual.formulario_modificar(id),"modificar");
+					instanciaActual.popup(instanciaActual.formulario_modificar(id),"modificar",id);
 				});
 				//Boton eliminar
 				td[cantidadTd-1].getElementsByTagName("span")[0].addEventListener("click", function(){
 					var id = this.getAttribute("pk");
 					console.log("Eliminar "+id);
+					bootbox.confirm("¿Estas seguro(a) que desea eliminar el siguiente registro? "+id, function(result){
+						if(result==true){
+							var datosFormulario = new FormData();
+							datosFormulario.append("accion", "eliminar");
+							datosFormulario.append("pk", id);
+							instanciaActual.ajaxGuardarModificar(datosFormulario,"eliminar",id);
+						}
+					});
 				});
 				}
 			}
@@ -1229,7 +1272,7 @@ class tablaCrud{
 		var numeroContenedores = this.obtenerNumeroDe(this.columnas,"contenedor");
 		
 		var html = "";
-		html += '<form id="frm-modificar" action="'+this.urlCargarDatos+'">';
+		html += '<form id="frm-modificar" action="'+this.urlCargarDatos+'" enctype="multipart/form-data">';
 		for(var i=1;i<=numeroContenedores;i++){
 			html += '<div class="card">';
 			if(this.contenedores.length>0){
@@ -1246,16 +1289,15 @@ class tablaCrud{
 								filaAgregada = true;
 								html += '<div class="form-row">';
 							}
-							if(this.columnas[keyColumna].numeroFila == x && this.columnas[keyColumna].ingresar == true){
+							if(this.columnas[keyColumna].numeroFila == x && this.columnas[keyColumna].modificar == true){
 								html += '<div class="col-md-4 mb-3">';
 								html += '	<label for="validationServer01">'+this.columnas[keyColumna].nombre+'</label>';
 								if(this.columnas[keyColumna].combobox!=null){
 									html += '	<select class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'">';
 									
 									for(var keyCombo in this.combobox){
-										//console.log(this.combobox[keyCombo].registros);
 										if(this.combobox[keyCombo].accion == this.columnas[keyColumna].combobox){//Identificamos el combobox correspondiente al registro
-											html += '<option value="0">Seleccione</option>';
+											html += '<option value="">Seleccione</option>';
 											for(var keyRegistros in this.combobox[keyCombo].registros){
 												//Acá estan los registros del combobox
 												//console.log(this.combobox[keyCombo].registros[keyRegistros].Value+'=='+datos[this.columnas[keyColumna].aliasJson]);
@@ -1271,11 +1313,13 @@ class tablaCrud{
 									html += '	</select>';
 								} else if(this.columnas[keyColumna].inputPersonalizadoIngresar!=null){
 									html += '	'+this.columnas[keyColumna].inputPersonalizadoIngresar(this.columnas[keyColumna].nombre);
+								} else if(this.columnas[keyColumna].archivo!=null && this.columnas[keyColumna].archivo == true){
+									html += '	<input type="file" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
 								}else{
-									html += '	<input type="text" class="form-control is-valid" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="'+datos[this.columnas[keyColumna].aliasJson]+'" required>';
+									html += '	<input type="text" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="'+datos[this.columnas[keyColumna].aliasJson]+'" required>';
 								}
 								
-								html += '	<div class="valid-feedback"></div>';
+								html += '	<div class="valid-feedback" id="frm-validacion-'+this.columnas[keyColumna].nombre+'"></div>';
 								html += '</div>';
 							}
 						}
@@ -1296,7 +1340,7 @@ class tablaCrud{
 		var numeroContenedores = this.obtenerNumeroDe(this.columnas,"contenedor");
 		
 		var html = "";
-		html += '<form class="frm-">';
+		html += '<form id="frm-crear" action="'+this.urlCargarDatos+'" enctype="multipart/form-data">';
 		for(var i=1;i<=numeroContenedores;i++){
 			html += '<div class="card">';
 			if(this.contenedores.length>0){
@@ -1313,23 +1357,18 @@ class tablaCrud{
 								filaAgregada = true;
 								html += '<div class="form-row">';
 							}
-							if(this.columnas[keyColumna].numeroFila == x && this.columnas[keyColumna].ingresar == true){
+							if(this.columnas[keyColumna].numeroFila == x && this.columnas[keyColumna].modificar == true){
 								html += '<div class="col-md-4 mb-3">';
 								html += '	<label for="validationServer01">'+this.columnas[keyColumna].nombre+'</label>';
 								if(this.columnas[keyColumna].combobox!=null){
 									html += '	<select class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'">';
 									
 									for(var keyCombo in this.combobox){
-										//console.log(this.combobox[keyCombo].registros);
 										if(this.combobox[keyCombo].accion == this.columnas[keyColumna].combobox){//Identificamos el combobox correspondiente al registro
-											html += '<option value="0">Seleccione</option>';
+											html += '<option value="">Seleccione</option>';
 											for(var keyRegistros in this.combobox[keyCombo].registros){
 												//Acá estan los registros del combobox
-												if(this.combobox[keyCombo].registros[keyRegistros].Value==this.datoRegistro){
-													html += '<option value="'+this.combobox[keyCombo].registros[keyRegistros].Value+'" selected>'+this.combobox[keyCombo].registros[keyRegistros].DisplayText+'</option>';
-												}else{
-													html += '<option value="'+this.combobox[keyCombo].registros[keyRegistros].Value+'">'+this.combobox[keyCombo].registros[keyRegistros].DisplayText+'</option>';
-												}
+												html += '<option value="'+this.combobox[keyCombo].registros[keyRegistros].Value+'">'+this.combobox[keyCombo].registros[keyRegistros].DisplayText+'</option>';
 											}
 										}
 									}
@@ -1337,11 +1376,13 @@ class tablaCrud{
 									html += '	</select>';
 								} else if(this.columnas[keyColumna].inputPersonalizadoIngresar!=null){
 									html += '	'+this.columnas[keyColumna].inputPersonalizadoIngresar(this.columnas[keyColumna].nombre);
+								} else if(this.columnas[keyColumna].archivo!=null && this.columnas[keyColumna].archivo == true){
+									html += '	<input type="file" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
 								}else{
-									html += '	<input type="text" class="form-control is-valid" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="" required>';
+									html += '	<input type="text" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" required>';
 								}
 								
-								html += '	<div class="valid-feedback"></div>';
+								html += '	<div class="valid-feedback" id="frm-validacion-'+this.columnas[keyColumna].nombre+'"></div>';
 								html += '</div>';
 							}
 						}
@@ -1353,10 +1394,21 @@ class tablaCrud{
 			html += '		</div>';
 			html += '</div><br>';
 		}
-		
+		html += '<div id="contenedor-frm-barra-progreso"></div>';
 		return html += '</form>';
 	}
-	popup(html,motivo){
+	
+	buscarDatosIgualesEntreFormularioColumna(nombreColumna,formulariop){
+		for(var i=0;i<formulariop.elements.length;i++){
+			if(formulariop.elements[i].name==nombreColumna){
+				return i;
+			}
+		}
+		console.log("Campo no encontrado "+nombreColumna);
+		return null;
+	}
+	
+	popup(html,motivo,pk){
 		var botonCargando = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
 		botonCargando += ' Guardando ...';
 		
@@ -1369,6 +1421,325 @@ class tablaCrud{
 		if(motivo=='modificar'){
 			dialog = bootbox.dialog({
 				title: 'Modificar registro',
+				message: html,
+				size: 'large',
+				buttons: {
+					cancelar: {
+						label: "Cancelar",
+						className: 'btn-secondary cancelar-frm',
+						callback: function(){
+							
+						}
+					},
+					guardar: {
+						label: "Guardar",
+						className: 'btn-primary guardar-frm',
+						callback: function(){
+							var form = $("#frm-modificar");
+							var formData = new FormData(form);
+							var campos_sin_completar = new Array();
+							var fields = form.serializeArray();
+							var datosFormulario = new FormData();
+							datosFormulario.append("accion", "modificar");
+							datosFormulario.append("pk", pk);
+							//Campos obligatorios
+							var formulariop = document.getElementById("frm-modificar");
+							for(var keyColumna in instanciaActual.columnas){
+								var i = instanciaActual.buscarDatosIgualesEntreFormularioColumna(instanciaActual.columnas[keyColumna].nombre,formulariop);
+								var campo = null;
+								var nombreCampo = null;
+								var valorCampo = null;
+								if(i!=null){
+									campo = formulariop.elements[i];
+									nombreCampo = campo.name;
+									valorCampo = campo.value;
+								}
+								if(instanciaActual.columnas[keyColumna].campoObligatorio==true && instanciaActual.columnas[keyColumna].archivo==null){
+									if(nombreCampo==instanciaActual.columnas[keyColumna].nombre){
+										//Validacion por AJAX
+										if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
+											var claseCampo = campo.getAttribute("class");
+											
+											if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+												campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
+													});
+												campo.focus();
+											}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+												//No se hace nada
+											}else if(claseCampo=="form-control" && valorCampo.length==0){//Si no ha sido completado
+												
+												campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
+													});
+												campo.focus();
+											}else{//Este ultimo se refiere a la posibilidad en que el campo venga sin validar pero con contenido al interior
+												campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin validar."
+													});
+												campo.focus();
+											}
+										}
+										//Fin validacion por AJAX
+										//Validacion campos obligatorios
+										if(valorCampo.length==0){
+											campo.setAttribute("class", "form-control is-invalid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+											if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
+												campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : "+instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio
+												});
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio;
+											}else{
+												campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
+												});
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese el campo";
+											}
+										}else{
+											campo.setAttribute("class", "form-control is-valid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+										}
+										//Fin validacion campos obligatorios
+										
+										//Validacion adicional
+										
+										if(instanciaActual.columnas[keyColumna].validacionExtra!=null){
+											var validacion = null;
+												
+											validacion = instanciaActual.columnas[keyColumna].validacionExtra(formulariop.elements);
+											
+											
+											if(validacion==true){
+												campo.setAttribute("class", "form-control is-valid");
+												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+											}else if(validacion==false && instanciaActual.columnas[keyColumna].archivo==null){
+									
+												campo.setAttribute("class", "form-control is-invalid");
+												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+												if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
+													campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : "+instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio
+													});
+													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio;
+												}else{
+													campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+""
+													});
+													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Error";
+												}
+											}	
+											
+										}
+										//Fin validacion adicional
+										
+										
+									}
+								}else{
+									if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
+										//Validacion extra para archivos
+										var validacion = null;
+										if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
+											if(campo.files.length > 0){
+												var validado = false;
+												if(instanciaActual.columnas[keyColumna].tipoArchivos!=null){
+													if(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type) == -1) {
+														validacion = false;
+														campos_sin_completar.push({
+															error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El archivo subido es incorrecto"
+														});
+														campo.setAttribute("class", "form-control is-invalid");
+														document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+														document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El archivo subido es incorrecto";
+													}else{
+														campo.setAttribute("class", "form-control is-valid");
+														document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+														document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+														//console.log(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type));
+													}
+													validado = true;
+												}
+												if(instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB!=null){
+													if(campo.files[0].size > instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB*1024*1024) {
+														validacion = false;
+														campos_sin_completar.push({
+															error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB"
+														});
+														campo.setAttribute("class", "form-control is-invalid");
+														document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+														document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB";
+													}else{
+														if(validado!=true){
+															campo.setAttribute("class", "form-control is-valid");
+															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+														}
+													}
+												}
+											}
+										//FIN Validacion extra para archivos	
+										}
+										//validar que el archivo FILE no este vacio
+										/*if(campo.files.length == 0){
+											campo.setAttribute("class", "form-control is-invalid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+											if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
+												campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : "+instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio
+												});
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio;
+											}else{
+												campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : Ingrese un archivo."
+												});
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese un archivo";
+											}
+										}else{
+											campo.setAttribute("class", "form-control is-valid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+										}*/
+										//FIN validar que el archivo FILE no este vacio
+										if(validacion==true){
+											campo.setAttribute("class", "form-control is-valid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+										}
+									}
+									//Validacion por AJAX
+									
+									if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
+										var claseCampo = campo.getAttribute("class");
+										if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+											campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
+												});
+											campo.focus();
+										}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+											//No se hace nada
+										}else if(claseCampo=="form-control" && campo.value.length==0){//Si no ha sido completado
+											//Como estamos en la aprte del if donde no son obligatorios no se tomará
+											/*campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
+												});
+											campo.focus();*/
+										}else{//Este ultimo se refiere a la posibilidad en que el campo venga sin validar pero con contenido al interior
+											campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin validar."
+												});
+											campo.focus();
+										}	
+									}
+										
+									//Fin validacion por AJAX
+								}
+								
+							}
+							
+							
+							if(campos_sin_completar.length>0){
+								var mensajes_error = "";
+								for(var key in campos_sin_completar){
+									mensajes_error += campos_sin_completar[key].error+"\n";
+								}
+								alert(mensajes_error);
+								return false;
+							}
+							//------Campos obligatorios
+							
+							//Capturar campos y formar el objeto formulario para enviar
+							for(var keyColumna in instanciaActual.columnas){
+								var i = instanciaActual.buscarDatosIgualesEntreFormularioColumna(instanciaActual.columnas[keyColumna].nombre,formulariop);
+								if(i!=null){
+									var campo = formulariop.elements[i];
+									//console.log(i);
+									//console.log(campo);
+									//console.log(name);
+									var nombreCampo = campo.name;
+									var valorCampo = campo.value;
+									if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
+										//formData.append(nombreCampo, campo.get(0).files[0]);
+										datosFormulario.append(nombreCampo, campo.files[0]);
+									}else{
+										datosFormulario.append(nombreCampo, valorCampo);
+									}
+								}
+							}
+							//--Fin campturar campos y formar el objeto formulario para enviar
+
+							var botonGuardar = $(".guardar-frm");
+							botonGuardar.html(botonCargando);
+							botonGuardar.prop('disabled', true);
+							
+							var botonCancelar = $(".cancelar-frm");
+							botonCancelar.prop('disabled', true);
+
+							var contenedorBarraProgreso = $("#contenedor-frm-barra-progreso");
+							contenedorBarraProgreso.html(barraProgreso);
+							instanciaActual.ajaxGuardarModificar(datosFormulario,"modificar",pk);
+							return false;
+						}
+					}
+				}
+			});
+			dialog.init(function(){
+				// Cuando se abra el popup se activaran los siguientes eventos para validar el formulario
+				var formulariop = document.getElementById("frm-modificar");
+				for(var keyColumna in instanciaActual.columnas){
+					var i = instanciaActual.buscarDatosIgualesEntreFormularioColumna(instanciaActual.columnas[keyColumna].nombre,formulariop);
+					if(i!=null){
+						var campo = formulariop.elements[i];
+						var nombreCampo = campo.name;
+						var valorCampo = campo.value;
+						//No repetir datos ajax
+						if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
+							//instanciaActual.ajaxDatosSinRepetir(instanciaActual.columnas[keyColumna].validacionAjax,pk);
+							var validacion = instanciaActual.columnas[keyColumna].validacionAjax;
+							var indiceValidacion = keyColumna;
+							campo.addEventListener("blur", function(){
+								if(this.value.length==0){//Si el campo esta en vacio no se validara y el estilo quedara normal
+									this.setAttribute("class", "form-control");
+									document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+								}else{
+									instanciaActual.ajaxDatosSinRepetir(indiceValidacion,validacion,this,pk,formulariop);
+								}	
+							});
+						}
+						if(instanciaActual.columnas[keyColumna].onblur!=null){
+							var funcion = instanciaActual.columnas[keyColumna].onblur;
+							campo.addEventListener("blur", function(){
+								funcion(this);
+							});
+						}
+						if(instanciaActual.columnas[keyColumna].keyPress!=null){
+							var funcion = instanciaActual.columnas[keyColumna].keyPress;
+							campo.addEventListener("keypress", function(){
+								funcion(this);
+							});
+						} 
+						
+						if(instanciaActual.columnas[keyColumna].keyUp!=null){
+							var funcion = instanciaActual.columnas[keyColumna].keyUp;
+							campo.addEventListener("keyup", function(){
+								funcion(this);
+							});
+						}
+						
+						if(instanciaActual.columnas[keyColumna].keyDown!=null){
+							var funcion = instanciaActual.columnas[keyColumna].keyDown;
+							campo.addEventListener("keydown", function(){
+								funcion(this);
+							});
+						}
+						//Fin no repetir datos ajax
+					}
+				}
+			});
+		}else if(motivo=='crear'){
+			dialog = bootbox.dialog({
+				title: 'Agregar nuevo registro',
 				message: html,
 				size: 'large',
 				
@@ -1384,29 +1755,297 @@ class tablaCrud{
 						label: "Guardar",
 						className: 'btn-primary guardar-frm',
 						callback: function(){
+							var form = $("#frm-crear");
+							var formData = new FormData(form);
+							var campos_sin_completar = new Array();
+							var fields = form.serializeArray();
+							var datosFormulario = new FormData();
+							datosFormulario.append("accion", "crear");
+							
+							//Campos obligatorios
+							var formulariop = document.getElementById("frm-crear");
+							for(var keyColumna in instanciaActual.columnas){
+								var i = instanciaActual.buscarDatosIgualesEntreFormularioColumna(instanciaActual.columnas[keyColumna].nombre,formulariop);
+								var campo = null;
+								var nombreCampo = null;
+								var valorCampo = null;
+								if(i!=null){
+									campo = formulariop.elements[i];
+									nombreCampo = campo.name;
+									valorCampo = campo.value;
+								}
+								if(instanciaActual.columnas[keyColumna].campoObligatorio==true){
+									if(nombreCampo==instanciaActual.columnas[keyColumna].nombre){
+										//Validacion por AJAX
+										if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
+											var claseCampo = campo.getAttribute("class");
+											
+											if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+												campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
+													});
+												campo.focus();
+											}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+												//No se hace nada
+											}else if(claseCampo=="form-control" && valorCampo.length==0){//Si no ha sido completado
+												
+												campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
+													});
+												campo.focus();
+											}else{//Este ultimo se refiere a la posibilidad en que el campo venga sin validar pero con contenido al interior
+												campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin validar."
+													});
+												campo.focus();
+											}
+										}
+										//Fin validacion por AJAX
+										//Validacion campos obligatorios
+										if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
+											//validar que el archivo FILE no este vacio
+											if(campo.files.length == 0){
+												campo.setAttribute("class", "form-control is-invalid");
+												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+												if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
+													campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : "+instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio
+													});
+													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio;
+												}else{
+													campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : Ingrese un archivo."
+													});
+													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese un archivo";
+												}
+											}else{
+												campo.setAttribute("class", "form-control is-valid");
+												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+											}
+											//FIN validar que el archivo FILE no este vacio
+										}else if(valorCampo.length==0){
+											campo.setAttribute("class", "form-control is-invalid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+											if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
+												campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : "+instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio
+												});
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio;
+											}else{
+												campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
+												});
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese el campo";
+											}
+										}else{
+											campo.setAttribute("class", "form-control is-valid");
+											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+										}
+										//Fin validacion campos obligatorios
+										
+										//Validacion adicional
+										
+										if(instanciaActual.columnas[keyColumna].validacionExtra!=null){
+											var validacion = null;
+											//Validacion extra para archivos
+											if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
+												if(campo.files.length > 0){
+													var validado = false;
+													if(instanciaActual.columnas[keyColumna].tipoArchivos!=null){
+														if(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type) == -1) {
+															validacion = false;
+															campos_sin_completar.push({
+																error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El archivo subido es incorrecto"
+															});
+															campo.setAttribute("class", "form-control is-invalid");
+															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El archivo subido es incorrecto";
+														}else{
+															campo.setAttribute("class", "form-control is-valid");
+															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+															//console.log(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type));
+														}
+														validado = true;
+													}
+													if(instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB!=null){
+														if(campo.files[0].size > instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB*1024*1024) {
+															validacion = false;
+															campos_sin_completar.push({
+																error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB"
+															});
+															campo.setAttribute("class", "form-control is-invalid");
+															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB";
+														}else{
+															if(validado!=true){
+																campo.setAttribute("class", "form-control is-valid");
+																document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+																document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+															}
+														}
+													}
+												}
+											//FIN Validacion extra para archivos	
+											}else{	
+												validacion = instanciaActual.columnas[keyColumna].validacionExtra(formulariop.elements);
+											}
+											
+											if(validacion==true){
+												campo.setAttribute("class", "form-control is-valid");
+												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
+											}else if(validacion==false && instanciaActual.columnas[keyColumna].archivo==null){
+									
+												campo.setAttribute("class", "form-control is-invalid");
+												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
+												if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
+													campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : "+instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio
+													});
+													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio;
+												}else{
+													campos_sin_completar.push({
+														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+""
+													});
+													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Error";
+												}
+											}	
+											
+										}
+										//Fin validacion adicional
+										
+										
+									}
+								}else{
+									//Validacion por AJAX
+									
+									if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
+										var claseCampo = campo.getAttribute("class");
+										if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+											campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
+												});
+											campo.focus();
+										}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+											//No se hace nada
+										}else if(claseCampo=="form-control" && campo.value.length==0){//Si no ha sido completado
+											//Como estamos en la aprte del if donde no son obligatorios no se tomará
+											/*campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
+												});
+											campo.focus();*/
+										}else{//Este ultimo se refiere a la posibilidad en que el campo venga sin validar pero con contenido al interior
+											campos_sin_completar.push({
+													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin validar."
+												});
+											campo.focus();
+										}	
+									}
+										
+									//Fin validacion por AJAX
+								}
+								
+							}
+							
+							
+							if(campos_sin_completar.length>0){
+								var mensajes_error = "";
+								for(var key in campos_sin_completar){
+									mensajes_error += campos_sin_completar[key].error+"\n";
+								}
+								alert(mensajes_error);
+								return false;
+							}
+							//------Campos obligatorios
+							
+							//Capturar campos y formar el objeto formulario para enviar
+							for(var keyColumna in instanciaActual.columnas){
+								var i = instanciaActual.buscarDatosIgualesEntreFormularioColumna(instanciaActual.columnas[keyColumna].nombre,formulariop);
+								if(i!=null){
+									var campo = formulariop.elements[i];
+									//console.log(i);
+									//console.log(campo);
+									//console.log(name);
+									var nombreCampo = campo.name;
+									var valorCampo = campo.value;
+									if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
+										//formData.append(nombreCampo, campo.get(0).files[0]);
+										datosFormulario.append(nombreCampo, campo.files[0]);
+									}else{
+										datosFormulario.append(nombreCampo, valorCampo);
+									}
+								}
+							}
+							//--Fin campturar campos y formar el objeto formulario para enviar
+
 							var botonGuardar = $(".guardar-frm");
 							botonGuardar.html(botonCargando);
 							botonGuardar.prop('disabled', true);
 							
 							var botonCancelar = $(".cancelar-frm");
 							botonCancelar.prop('disabled', true);
-							
-							
+
 							var contenedorBarraProgreso = $("#contenedor-frm-barra-progreso");
 							contenedorBarraProgreso.html(barraProgreso);
-							
-							/*var barraProgreso = $("#frm-barra-progreso");
-							barraProgreso.attr('aria-valuenow', '25');
-							barraProgreso.css('style', 'width: 25%;');*/
-							
-							var form = $("#frm-modificar");
-							var formData = new FormData(form);
-							//formData.append('file', file);
-							console.log(formData);
-							//bootbox.alert("This is the default alert!");
-							instanciaActual.ajaxGuardarModificar(form,"modificar");
+							instanciaActual.ajaxGuardarModificar(datosFormulario,"crear",null);
 							return false;
 						}
+					}
+				}
+			});
+			dialog.init(function(){
+				// Cuando se abra el popup se activaran los siguientes eventos para validar el formulario
+				var formulariop = document.getElementById("frm-crear");
+				for(var keyColumna in instanciaActual.columnas){
+					var i = instanciaActual.buscarDatosIgualesEntreFormularioColumna(instanciaActual.columnas[keyColumna].nombre,formulariop);
+					if(i!=null){
+						var campo = formulariop.elements[i];
+						var nombreCampo = campo.name;
+						var valorCampo = campo.value;
+						//No repetir datos ajax
+						if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
+							//instanciaActual.ajaxDatosSinRepetir(instanciaActual.columnas[keyColumna].validacionAjax,pk);
+							var validacion = instanciaActual.columnas[keyColumna].validacionAjax;
+							var indiceValidacion = keyColumna;
+							campo.addEventListener("blur", function(){
+								if(this.value.length==0){//Si el campo esta en vacio no se validara y el estilo quedara normal
+									this.setAttribute("class", "form-control");
+									document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
+								}else{
+									instanciaActual.ajaxDatosSinRepetir(indiceValidacion,validacion,this,null,formulariop);
+								}	
+							});
+						}
+						if(instanciaActual.columnas[keyColumna].onblur!=null){
+							var funcion = instanciaActual.columnas[keyColumna].onblur;
+							campo.addEventListener("blur", function(){
+								funcion(this);
+							});
+						}
+						if(instanciaActual.columnas[keyColumna].keyPress!=null){
+							var funcion = instanciaActual.columnas[keyColumna].keyPress;
+							campo.addEventListener("keypress", function(){
+								funcion(this);
+							});
+						} 
+						
+						if(instanciaActual.columnas[keyColumna].keyUp!=null){
+							var funcion = instanciaActual.columnas[keyColumna].keyUp;
+							campo.addEventListener("keyup", function(){
+								funcion(this);
+							});
+						}
+						
+						if(instanciaActual.columnas[keyColumna].keyDown!=null){
+							var funcion = instanciaActual.columnas[keyColumna].keyDown;
+							campo.addEventListener("keydown", function(){
+								funcion(this);
+							});
+						}
+						//Fin no repetir datos ajax
 					}
 				}
 			});
@@ -1427,23 +2066,125 @@ class tablaCrud{
 		
 	  var progressBar = $("#"+idBarraProgreso);
 	  var porcentajeActual = (parseInt(pe.loaded)*100)/parseInt(pe.total);
-	  console.log(progressBar);
+	  //console.log(progressBar);
 	  progressBar.attr("style","width: "+progressIndicator+"%;");
 	  progressBar.attr("aria-valuenow",progressIndicator);
 	  progressBar.html(mensaje+" "+progressIndicator+"%");
 	}
 	
-	ajaxGuardarModificar(frm,accion){
-		var url = this.urlCargarDatos;
+	buscarRegistros(pk){
+		for(var keyColumna in this.columnas){
+			if(this.columnas[keyColumna].pk==true){
+				for(var key in this.registrosBD.Registros){
+					var valor = this.registrosBD.Registros[key][this.columnas[keyColumna].aliasJson];
+					if(valor==pk) return this.registrosBD.Registros[key];
+				}
+			}
+		}
+	}	
+	ajaxDatosSinRepetir(indiceValidacion,parametosValidacion,campo, pk, formulario){//instanciaActual.columnas[keyColumna].validacionAjax,campo,pk
+		var datosFila = this.buscarRegistros(pk);
+		var instanciaActual = this;
+		var cliente = new XMLHttpRequest();
+		cliente.open("POST", parametosValidacion().url, true);
+		cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 		
+		cliente.onerror = function () {
+			bootbox.alert("Error : "+this.status+", al cargar, intentelo nuevamente ");
+		};
+		var instanciaActual = this;
+		cliente.onreadystatechange = function(datos) {
+			
+			//var datosJson = JSON.parse(this.response);
+			try {
+				
+                var datosJson = JSON.parse(this.response);
+				if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+					if(datosJson.Resultado=="OK"){
+						
+						var respuesta = null;
+						if(pk!=null){
+							respuesta = parametosValidacion().validacion(datosJson.Registros,datosFila,campo.value,formulario, pk);
+						}else{
+							respuesta = parametosValidacion().validacion(datosJson.Registros,null,campo.value,formulario, null);
+						}
+						
+						if(respuesta.resultado == false){
+							campo.setAttribute("class", "form-control is-invalid");
+							document.getElementById("frm-validacion-"+campo.name).setAttribute("class","invalid-feedback");
+							document.getElementById("frm-validacion-"+campo.name).innerHTML = respuesta.mensaje;
+						}else{
+							campo.setAttribute("class", "form-control is-valid");
+							document.getElementById("frm-validacion-"+campo.name).setAttribute("class","valid-feedback");
+							document.getElementById("frm-validacion-"+campo.name).innerHTML = "";
+							//console.log(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type));
+						}
+					}
+					
+				
+				}else if(this.status === 400){
+					bootbox.alert("Error "+this.status+": La solicitud no se puede cumplir debido a una mala sintaxis, intentelo nuevamente ");
+				}else if(this.status === 401){
+					bootbox.alert("Error "+this.status+": La solicitud fue legal, pero el servidor se niega a responder. Para usar cuando la autenticación es posible pero ha fallado o aún no se ha proporcionado, intentelo nuevamente ");
+				}else if(this.status === 402){
+					bootbox.alert("Error "+this.status+": reservado para uso futuro, intentelo nuevamente ");
+				}else if(this.status === 403){
+					bootbox.alert("Error "+this.status+": La solicitud fue legal, pero el servidor se niega a responder, intentelo nuevamente ");
+				}else if(this.status === 404){
+					bootbox.alert("Error "+this.status+": página no encontrada, intentelo nuevamente ");
+				}else if(this.status === 405){
+					bootbox.alert("Error "+this.status+": Se realizó una solicitud de una página utilizando un método de solicitud no admitido por esa página, intentelo nuevamente ");
+				}else if(this.status === 406){
+					bootbox.alert("Error "+this.status+": El servidor solo puede generar una respuesta que no es aceptada por el cliente, intentelo nuevamente ");
+				}else if(this.status === 407){
+					bootbox.alert("Error "+this.status+": El cliente primero debe autenticarse con el proxy, intentelo nuevamente ");
+				}else if(this.status === 408){
+					bootbox.alert("Error "+this.status+": El servidor agotó el tiempo de espera para la solicitud, intentelo nuevamente ");
+				}else if(this.status === 409){
+					bootbox.alert("Error "+this.status+": La solicitud no se pudo completar debido a un conflicto en la solicitud, intentelo nuevamente ");
+				}else if(this.status === 410){
+					bootbox.alert("Error "+this.status+": La página solicitada ya no está disponible., intentelo nuevamente ");
+				}else if(this.status === 411){
+					bootbox.alert("Error "+this.status+": El 'Contenido-Longitud' no está definido. El servidor no aceptará la solicitud sin él., intentelo nuevamente ");
+				}else if(this.status === 412){
+					bootbox.alert("Error "+this.status+": La condición previa dada en la solicitud evaluada en falso por el servidor, intentelo nuevamente ");
+				}else if(this.status === 413){
+					bootbox.alert("Error "+this.status+": El servidor no aceptará la solicitud porque la entidad de solicitud es demasiado grande, intentelo nuevamente ");
+				}else if(this.status === 414){
+					bootbox.alert("Error "+this.status+": El servidor no aceptará la solicitud, porque la URL es demasiado larga. Ocurre cuando convierte una solicitud POST a una solicitud GET con una información de consulta larga, intentelo nuevamente ");
+				}else if(this.status === 415){
+					bootbox.alert("Error "+this.status+": El servidor no aceptará la solicitud, porque el tipo de medio no es compatible, intentelo nuevamente ");
+				}else if(this.status === 416){
+					bootbox.alert("Error "+this.status+": El cliente ha solicitado una parte del archivo, pero el servidor no puede suministrar esa parte, intentelo nuevamente ");
+				}else if(this.status === 417){
+					bootbox.alert("Error "+this.status+": El servidor no puede cumplir los requisitos del campo Esperar encabezado de solicitud, intentelo nuevamente ");
+				}
+            } catch (e){
+                var resp = {
+                    status: 'error',
+                    data: 'Unknown error occurred: [' + this.responseText + ']'
+                };
+				//console.log(resp);
+            }
+			//console.log(JSON.stringify(datosJson));
+			
+		}
+		var datoEnviar = null;
+		if(pk!=null){
+			datoEnviar = datosFila[parametosValidacion().datoEnviar];
+		}else{
+			datoEnviar = null;
+		}
+		var nombreDatoEnviar = parametosValidacion().datoEnviar;
+		cliente.send("accion="+parametosValidacion().accion+"&"+nombreDatoEnviar+"="+datoEnviar+"&valorCampo="+campo.value);
+	}
+	
+	ajaxGuardarModificar(frm,accion,pk){
+		var url = this.urlCargarDatos;
 		var instanciaActual = this;
 		var cliente = new XMLHttpRequest();
 		cliente.open("POST", url, true);
-		cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-		
-		
-		
-		
+		//cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 		cliente.upload.addEventListener('progress', function(e){//Esto es al subir un archivo
 			instanciaActual.barraprogresoGuardarModificar(e,"subiendo","frm-barra-progreso");
 		}, false);
@@ -1530,14 +2271,7 @@ class tablaCrud{
 				progressBar.html(mensajeError); 
 			}
 		}
-		
-		
-		var datos = "accion="+accion+"&";
-		var fields = frm.serializeArray();
-		console.log(fields);
-		jQuery.each(fields, function(i, field){
-			 datos += field.name+'='+field.value+'&';
-		});
-		cliente.send(datos);
+		//Enviar ajax
+		cliente.send(frm);
 	}
 }
