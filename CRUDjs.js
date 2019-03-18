@@ -22,6 +22,21 @@ class tablaCrud{
 		this.contenedores = new Array();
 		this.combobox = new Array();
 		this.quitarBotonAgregar = false;
+		this.coockies = new Array();
+		if(this.obtenerCookie("configTablaCrud")!=""){
+			this.coockies = JSON.parse(this.obtenerCookie("configTablaCrud"));
+		}
+	}
+	
+	agregarCoockieSinRepetir(campo,valor){
+		//console.log(this.coockies);
+		for(var key in this.coockies){
+			if(this.coockies[key].numeroCabecera==campo){//Si esta repetido se modifica
+				this.coockies[key].visible = valor;
+				return true;
+			}
+		}
+		this.coockies.push({numeroCabecera : campo, visible : valor});
 	}
 	
 	agregarBoton(json){
@@ -87,6 +102,38 @@ class tablaCrud{
 	setUrlCargarDatos(url){
 		this.urlCargarDatos = url;
 	}
+	
+	crearCoockiePreferenciaColumnas(){
+		document.cookie = "configTablaCrud="+JSON.stringify(this.coockies)+"; path="+window.location+"; expires=Fri, 31 Dec 9999 23:59:59 GMT";
+		//var cookie = ["preferenciasTablaCRUD", '=', JSON.stringify(this.coockies), '; domain=.', window.location.host.toString(), '; path=/;'].join('');
+		//document.cookie = cookie;
+	}
+	
+	obtenerEstadoColumnaTablaCoockie(numeroCabecera){
+		for(var key in this.coockies){
+			if(this.coockies[key].numeroCabecera == numeroCabecera){
+				return this.coockies[key].visible;
+			}
+		}
+		return null;
+	}
+	
+	obtenerCookie(cname) {
+	  var name = cname + "=";
+	  var decodedCookie = decodeURIComponent(document.cookie);
+	  var ca = decodedCookie.split(';');
+	  for(var i = 0; i <ca.length; i++) {
+		var c = ca[i];
+		while (c.charAt(0) == ' ') {
+		  c = c.substring(1);
+		}
+		if (c.indexOf(name) == 0) {
+		  return c.substring(name.length, c.length);
+		}
+	  }
+	  return "";
+	}
+	
 	
 	redimensionarTabla(){
 		var thElm;
@@ -278,7 +325,7 @@ class tablaCrud{
 				var checkBoxBoton = document.createElement("input");
 				this.agregarAtributo(checkBoxBoton,"type","checkbox");
 				this.agregarAtributo(checkBoxBoton,"class","form-check-input");
-				this.agregarAtributo(checkBoxBoton,"checked","");
+				if(this.obtenerEstadoColumnaTablaCoockie(indiceTablaColumna)!="false") this.agregarAtributo(checkBoxBoton,"checked","");
 				this.agregarAtributo(checkBoxBoton,"numero",indiceTablaColumna);
 				var labelCheck = document.createElement("label");
 				this.agregarAtributo(labelCheck,"class","form-check-label");
@@ -292,7 +339,6 @@ class tablaCrud{
 				datoSelectColumna.appendChild(contenedorCheckbox);
 				listadoBotonMostrarColumnas.appendChild(datoSelectColumna);
 			}
-			
 		}
 		contenedorBotonMostrarColumnas.appendChild(listadoBotonMostrarColumnas);
 		divBotonSuperior.appendChild(contenedorBotonMostrarColumnas);
@@ -327,6 +373,11 @@ class tablaCrud{
 				iconoSorting.appendChild(path);
 				columna.appendChild(nombreColumna);
 				columna.appendChild(iconoSorting);
+				//console.log(this.columnas[x].nombre+" "+this.obtenerEstadoColumnaTablaCoockie(indiceColumna));
+				if(this.obtenerEstadoColumnaTablaCoockie(indiceColumna)=="false"){ 
+					//console.log(this.obtenerEstadoColumnaTablaCoockie(indiceTablaColumna));
+					this.agregarAtributo(columna,"class","d-none"); 
+				}
 				fila.appendChild(columna);
 				indiceColumna++;
 			}
@@ -395,11 +446,11 @@ class tablaCrud{
 					//console.log(tablaActual);
 					var atributo = this.getElementsByTagName("span")[0].getElementsByTagName("i")[0].getAttribute("class");
 					var contenidoTexto = this.textContent;
-					console.log(atributo);
-					console.log(contenidoTexto);
+					//console.log(atributo);
+					//console.log(contenidoTexto);
 					
 					var columnas = instanciaActual.columnas;
-					console.log(columnas);
+					//console.log(columnas);
 					if(atributo=="fa fa-sort"){
 						this.getElementsByTagName("span")[0].getElementsByTagName("i")[0].setAttribute("class","fa fa-sort-up");
 						for(var keyColumna in columnas){
@@ -444,21 +495,31 @@ class tablaCrud{
 		//Boton cabecera 
 		var checkbox = this.obtenerBotonOcultarColumnas().getElementsByTagName("a");
 		//console.log(checkbox);
+		var nombreColumna = null;
 		for(var x = 0; x<checkbox.length;x++){
 			var seleccionado = checkbox[x].getElementsByTagName("div")[0].getElementsByTagName("input")[0];
-			
+			nombreColumna = checkbox[x].getElementsByTagName("div")[0].getElementsByTagName("label")[0].textContent;
+			//nombreColumna = nombreColumna.replace(/\s/g,"_");
 			
 			seleccionado.addEventListener("click", function(){	
-				
 				if(this.checked==true){
 					//console.log("Esta checkeado "+this.getAttribute("numero"));
 					//numero
 					instanciaActual.mostrarEsconderColumna(this.getAttribute("numero"), true);
+					instanciaActual.agregarCoockieSinRepetir(this.getAttribute("numero"),"true");
+					//instanciaActual.crearCoockiePreferenciaColumnas(nombreColumna,true);
 				}else{
 					instanciaActual.mostrarEsconderColumna(this.getAttribute("numero"), false);
+					
+					instanciaActual.agregarCoockieSinRepetir(this.getAttribute("numero"),"false");
+					//instanciaActual.crearCoockiePreferenciaColumnas(nombreColumna,false);
 				}
+				instanciaActual.crearCoockiePreferenciaColumnas();
 			});
+			
 		}
+		
+		
 		for(var x=0;x<this.botonesmenuSuperior.length;x++){
 			instanciaActual.obtenerBotonAgregarRegistros()[x].addEventListener("click", function(){
 				if(this.getAttribute("funcion-especial")!=null){
@@ -1205,7 +1266,7 @@ class tablaCrud{
 		}
 		
 		//console.log("largo del contenido = "+contentLength);
-		var progressIndicator = Math.round((parseInt(pe.loaded)*100) / contentLength);
+		var progressIndicator = parseInt(Math.round((parseInt(pe.loaded)*100) / parseInt(contentLength)));
 		//console.log(pe.loaded);
 		//console.log(pe.lengthComputable);
 		//if(pe.lengthComputable) {
@@ -1217,12 +1278,19 @@ class tablaCrud{
 		  //console.log("Total "+pe.total);
 		  //console.log("avance"+progressIndicator);
 		  var progressBar = this.contenedor.getElementsByTagName("table")[0].getElementsByTagName("tbody")[0].getElementsByTagName("tr")[0].getElementsByTagName("td")[0].getElementsByTagName("div")[0].getElementsByTagName("div")[0];
-		  var porcentajeActual = (parseInt(pe.loaded)*100)/parseInt(pe.total);
+		  //var porcentajeActual = (parseInt(pe.loaded)*100)/parseInt(pe.total);
 		  //progressBar.setAttribute("aria-valuemax",pe.total);
 		  //progressBar.setAttribute("aria-valuemin",0);
-		  progressBar.setAttribute("style","width: "+progressIndicator+"%;");
+		  //console.log("style : width: "+progressIndicator+"%;");
+		  progressBar.removeAttribute("style");
+		  progressBar.setAttribute("style","width: "+progressIndicator*2+"%;");
+		  progressBar.removeAttribute("aria-valuenow");
 		  progressBar.setAttribute("aria-valuenow",progressIndicator);
+		  //progressBar.setAttribute("class","progress-bar w-"+parseInt(progressIndicator));
+		  //console.log("aria-valuenow "+progressIndicator);
+		  //console.log("aria-valuemax"+progressBar.getAttribute("aria-valuemax"));
 		  progressBar.innerHTML = mensaje+" "+progressIndicator+"%";
+		  //console.log(mensaje+" "+progressIndicator+"%");
 		//}
 	}
 	agregarNumeroFilaSinRepetir(vector,valor){
@@ -1293,7 +1361,7 @@ class tablaCrud{
 								html += '<div class="col-md-4 mb-3">';
 								html += '	<label for="validationServer01">'+this.columnas[keyColumna].nombre+'</label>';
 								if(this.columnas[keyColumna].combobox!=null){
-									html += '	<select class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'">';
+									html += '	<select class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'">';
 									
 									for(var keyCombo in this.combobox){
 										if(this.combobox[keyCombo].accion == this.columnas[keyColumna].combobox){//Identificamos el combobox correspondiente al registro
@@ -1314,9 +1382,12 @@ class tablaCrud{
 								} else if(this.columnas[keyColumna].inputPersonalizadoIngresar!=null){
 									html += '	'+this.columnas[keyColumna].inputPersonalizadoIngresar(this.columnas[keyColumna].nombre);
 								} else if(this.columnas[keyColumna].archivo!=null && this.columnas[keyColumna].archivo == true){
-									html += '	<input type="file" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
+									if(this.columnas[keyColumna].vistaPreviaModificar!=null){
+										html += this.columnas[keyColumna].vistaPreviaModificar(datos);
+									}
+									html += '	<input type="file" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
 								}else{
-									html += '	<input type="text" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="'+datos[this.columnas[keyColumna].aliasJson]+'" required>';
+									html += '	<input type="text" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="'+datos[this.columnas[keyColumna].aliasJson]+'" required>';
 								}
 								
 								html += '	<div class="valid-feedback" id="frm-validacion-'+this.columnas[keyColumna].nombre+'"></div>';
@@ -1361,7 +1432,7 @@ class tablaCrud{
 								html += '<div class="col-md-4 mb-3">';
 								html += '	<label for="validationServer01">'+this.columnas[keyColumna].nombre+'</label>';
 								if(this.columnas[keyColumna].combobox!=null){
-									html += '	<select class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'">';
+									html += '	<select class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'">';
 									
 									for(var keyCombo in this.combobox){
 										if(this.combobox[keyCombo].accion == this.columnas[keyColumna].combobox){//Identificamos el combobox correspondiente al registro
@@ -1377,9 +1448,9 @@ class tablaCrud{
 								} else if(this.columnas[keyColumna].inputPersonalizadoIngresar!=null){
 									html += '	'+this.columnas[keyColumna].inputPersonalizadoIngresar(this.columnas[keyColumna].nombre);
 								} else if(this.columnas[keyColumna].archivo!=null && this.columnas[keyColumna].archivo == true){
-									html += '	<input type="file" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
+									html += '	<input type="file" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
 								}else{
-									html += '	<input type="text" class="form-control" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" required>';
+									html += '	<input type="text" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" required>';
 								}
 								
 								html += '	<div class="valid-feedback" id="frm-validacion-'+this.columnas[keyColumna].nombre+'"></div>';
@@ -1413,7 +1484,7 @@ class tablaCrud{
 		botonCargando += ' Guardando ...';
 		
 		var barraProgreso = '<div class="progress">'
-							+'<div id="frm-barra-progreso" class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>'
+							+'<div id="frm-barra-progreso" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>'
 							+'</div>';
 		var instanciaActual = this;
 		//Establecer el numero de filas
@@ -1460,14 +1531,14 @@ class tablaCrud{
 										if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
 											var claseCampo = campo.getAttribute("class");
 											
-											if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+											if(claseCampo=="form-control form-control-sm is-invalid"){//Si el dato no es valido
 												campos_sin_completar.push({
 														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
 													});
 												campo.focus();
-											}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+											}else if(claseCampo=="form-control form-control-sm is-valid"){//Si el dato es valido
 												//No se hace nada
-											}else if(claseCampo=="form-control" && valorCampo.length==0){//Si no ha sido completado
+											}else if(claseCampo=="form-control form-control-sm" && valorCampo.length==0){//Si no ha sido completado
 												
 												campos_sin_completar.push({
 														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
@@ -1483,7 +1554,7 @@ class tablaCrud{
 										//Fin validacion por AJAX
 										//Validacion campos obligatorios
 										if(valorCampo.length==0){
-											campo.setAttribute("class", "form-control is-invalid");
+											campo.setAttribute("class", "form-control form-control-sm is-invalid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 											if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
 												campos_sin_completar.push({
@@ -1497,7 +1568,7 @@ class tablaCrud{
 												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese el campo";
 											}
 										}else{
-											campo.setAttribute("class", "form-control is-valid");
+											campo.setAttribute("class", "form-control form-control-sm is-valid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 										}
@@ -1512,12 +1583,12 @@ class tablaCrud{
 											
 											
 											if(validacion==true){
-												campo.setAttribute("class", "form-control is-valid");
+												campo.setAttribute("class", "form-control form-control-sm is-valid");
 												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 											}else if(validacion==false && instanciaActual.columnas[keyColumna].archivo==null){
 									
-												campo.setAttribute("class", "form-control is-invalid");
+												campo.setAttribute("class", "form-control form-control-sm is-invalid");
 												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 												if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
 													campos_sin_completar.push({
@@ -1550,11 +1621,11 @@ class tablaCrud{
 														campos_sin_completar.push({
 															error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El archivo subido es incorrecto"
 														});
-														campo.setAttribute("class", "form-control is-invalid");
+														campo.setAttribute("class", "form-control form-control-sm is-invalid");
 														document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 														document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El archivo subido es incorrecto";
 													}else{
-														campo.setAttribute("class", "form-control is-valid");
+														campo.setAttribute("class", "form-control form-control-sm is-valid");
 														document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 														document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 														//console.log(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type));
@@ -1567,12 +1638,12 @@ class tablaCrud{
 														campos_sin_completar.push({
 															error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB"
 														});
-														campo.setAttribute("class", "form-control is-invalid");
+														campo.setAttribute("class", "form-control form-control-sm is-invalid");
 														document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 														document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB";
 													}else{
 														if(validado!=true){
-															campo.setAttribute("class", "form-control is-valid");
+															campo.setAttribute("class", "form-control form-control-sm is-valid");
 															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 														}
@@ -1583,7 +1654,7 @@ class tablaCrud{
 										}
 										//validar que el archivo FILE no este vacio
 										/*if(campo.files.length == 0){
-											campo.setAttribute("class", "form-control is-invalid");
+											campo.setAttribute("class", "form-control form-control-sm is-invalid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 											if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
 												campos_sin_completar.push({
@@ -1597,13 +1668,13 @@ class tablaCrud{
 												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese un archivo";
 											}
 										}else{
-											campo.setAttribute("class", "form-control is-valid");
+											campo.setAttribute("class", "form-control form-control-sm is-valid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 										}*/
 										//FIN validar que el archivo FILE no este vacio
 										if(validacion==true){
-											campo.setAttribute("class", "form-control is-valid");
+											campo.setAttribute("class", "form-control form-control-sm is-valid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 										}
@@ -1612,14 +1683,14 @@ class tablaCrud{
 									
 									if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
 										var claseCampo = campo.getAttribute("class");
-										if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+										if(claseCampo=="form-control form-control-sm is-invalid"){//Si el dato no es valido
 											campos_sin_completar.push({
 													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
 												});
 											campo.focus();
-										}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+										}else if(claseCampo=="form-control form-control-sm is-valid"){//Si el dato es valido
 											//No se hace nada
-										}else if(claseCampo=="form-control" && campo.value.length==0){//Si no ha sido completado
+										}else if(claseCampo=="form-control form-control-sm" && campo.value.length==0){//Si no ha sido completado
 											//Como estamos en la aprte del if donde no son obligatorios no se tomará
 											/*campos_sin_completar.push({
 													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
@@ -1700,7 +1771,7 @@ class tablaCrud{
 							var indiceValidacion = keyColumna;
 							campo.addEventListener("blur", function(){
 								if(this.value.length==0){//Si el campo esta en vacio no se validara y el estilo quedara normal
-									this.setAttribute("class", "form-control");
+									this.setAttribute("class", "form-control form-control-sm");
 									document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 								}else{
 									instanciaActual.ajaxDatosSinRepetir(indiceValidacion,validacion,this,pk,formulariop);
@@ -1780,14 +1851,14 @@ class tablaCrud{
 										if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
 											var claseCampo = campo.getAttribute("class");
 											
-											if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+											if(claseCampo=="form-control form-control-sm is-invalid"){//Si el dato no es valido
 												campos_sin_completar.push({
 														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
 													});
 												campo.focus();
-											}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+											}else if(claseCampo=="form-control form-control-sm is-valid"){//Si el dato es valido
 												//No se hace nada
-											}else if(claseCampo=="form-control" && valorCampo.length==0){//Si no ha sido completado
+											}else if(claseCampo=="form-control form-control-sm" && valorCampo.length==0){//Si no ha sido completado
 												
 												campos_sin_completar.push({
 														error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
@@ -1805,7 +1876,7 @@ class tablaCrud{
 										if(instanciaActual.columnas[keyColumna].archivo!=null && instanciaActual.columnas[keyColumna].archivo==true){
 											//validar que el archivo FILE no este vacio
 											if(campo.files.length == 0){
-												campo.setAttribute("class", "form-control is-invalid");
+												campo.setAttribute("class", "form-control form-control-sm is-invalid");
 												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 												if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
 													campos_sin_completar.push({
@@ -1819,13 +1890,13 @@ class tablaCrud{
 													document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese un archivo";
 												}
 											}else{
-												campo.setAttribute("class", "form-control is-valid");
+												campo.setAttribute("class", "form-control form-control-sm is-valid");
 												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 											}
 											//FIN validar que el archivo FILE no este vacio
 										}else if(valorCampo.length==0){
-											campo.setAttribute("class", "form-control is-invalid");
+											campo.setAttribute("class", "form-control form-control-sm is-invalid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 											if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
 												campos_sin_completar.push({
@@ -1839,7 +1910,7 @@ class tablaCrud{
 												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "Ingrese el campo";
 											}
 										}else{
-											campo.setAttribute("class", "form-control is-valid");
+											campo.setAttribute("class", "form-control form-control-sm is-valid");
 											document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 											document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 										}
@@ -1859,11 +1930,11 @@ class tablaCrud{
 															campos_sin_completar.push({
 																error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El archivo subido es incorrecto"
 															});
-															campo.setAttribute("class", "form-control is-invalid");
+															campo.setAttribute("class", "form-control form-control-sm is-invalid");
 															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El archivo subido es incorrecto";
 														}else{
-															campo.setAttribute("class", "form-control is-valid");
+															campo.setAttribute("class", "form-control form-control-sm is-valid");
 															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 															//console.log(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type));
@@ -1876,12 +1947,12 @@ class tablaCrud{
 															campos_sin_completar.push({
 																error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB"
 															});
-															campo.setAttribute("class", "form-control is-invalid");
+															campo.setAttribute("class", "form-control form-control-sm is-invalid");
 															document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 															document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "El peso maximo son "+instanciaActual.columnas[keyColumna].tamanoMaximoArchivoMB+" MB";
 														}else{
 															if(validado!=true){
-																campo.setAttribute("class", "form-control is-valid");
+																campo.setAttribute("class", "form-control form-control-sm is-valid");
 																document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 																document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 															}
@@ -1894,12 +1965,12 @@ class tablaCrud{
 											}
 											
 											if(validacion==true){
-												campo.setAttribute("class", "form-control is-valid");
+												campo.setAttribute("class", "form-control form-control-sm is-valid");
 												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 												document.getElementById("frm-validacion-"+nombreCampo).innerHTML = "";
 											}else if(validacion==false && instanciaActual.columnas[keyColumna].archivo==null){
 									
-												campo.setAttribute("class", "form-control is-invalid");
+												campo.setAttribute("class", "form-control form-control-sm is-invalid");
 												document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","invalid-feedback");
 												if(instanciaActual.columnas[keyColumna].mensajeErrorCampoObligatorio!=null){
 													campos_sin_completar.push({
@@ -1924,14 +1995,14 @@ class tablaCrud{
 									
 									if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
 										var claseCampo = campo.getAttribute("class");
-										if(claseCampo=="form-control is-invalid"){//Si el dato no es valido
+										if(claseCampo=="form-control form-control-sm is-invalid"){//Si el dato no es valido
 											campos_sin_completar.push({
 													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : dato inválido."
 												});
 											campo.focus();
-										}else if(claseCampo=="form-control is-valid"){//Si el dato es valido
+										}else if(claseCampo=="form-control form-control-sm is-valid"){//Si el dato es valido
 											//No se hace nada
-										}else if(claseCampo=="form-control" && campo.value.length==0){//Si no ha sido completado
+										}else if(claseCampo=="form-control form-control-sm" && campo.value.length==0){//Si no ha sido completado
 											//Como estamos en la aprte del if donde no son obligatorios no se tomará
 											/*campos_sin_completar.push({
 													error : "Error en "+instanciaActual.columnas[keyColumna].nombre+" : campo sin completar."
@@ -2012,7 +2083,7 @@ class tablaCrud{
 							var indiceValidacion = keyColumna;
 							campo.addEventListener("blur", function(){
 								if(this.value.length==0){//Si el campo esta en vacio no se validara y el estilo quedara normal
-									this.setAttribute("class", "form-control");
+									this.setAttribute("class", "form-control form-control-sm");
 									document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 								}else{
 									instanciaActual.ajaxDatosSinRepetir(indiceValidacion,validacion,this,null,formulariop);
@@ -2110,11 +2181,11 @@ class tablaCrud{
 						}
 						
 						if(respuesta.resultado == false){
-							campo.setAttribute("class", "form-control is-invalid");
+							campo.setAttribute("class", "form-control form-control-sm is-invalid");
 							document.getElementById("frm-validacion-"+campo.name).setAttribute("class","invalid-feedback");
 							document.getElementById("frm-validacion-"+campo.name).innerHTML = respuesta.mensaje;
 						}else{
-							campo.setAttribute("class", "form-control is-valid");
+							campo.setAttribute("class", "form-control form-control-sm is-valid");
 							document.getElementById("frm-validacion-"+campo.name).setAttribute("class","valid-feedback");
 							document.getElementById("frm-validacion-"+campo.name).innerHTML = "";
 							//console.log(instanciaActual.columnas[keyColumna].tipoArchivos.indexOf(campo.files[0].type));
