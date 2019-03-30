@@ -22,12 +22,69 @@ class tablaCrud{
 		this.contenedores = new Array();
 		this.combobox = new Array();
 		this.quitarBotonAgregar = false;
+                this.quitarBotonEliminar = false;
+                this.quitarBotonEditar = false;
 		this.coockies = new Array();
 		if(this.obtenerCookie("configTablaCrud")!=""){
 			this.coockies = JSON.parse(this.obtenerCookie("configTablaCrud"));
 		}
+                this.parametrosBusquedas = new Array();
 	}
-	
+        
+        cargarRegistrosConFiltro(){
+            this.paginaActual = 1;
+            this.jtStartIndex = 0;
+            this.jtPageSize = this.obtenerBotonCantidadRegistrosPorPagina().value;
+            if(this.paginaActual==1){
+                    this.jtStartIndex = 0;
+            }else{
+                    this.jtStartIndex = (this.obtenerBotonCantidadRegistrosPorPagina().value * this.paginaActual)-this.obtenerBotonCantidadRegistrosPorPagina().value;
+            }
+
+            //instanciaActual.jtSorting = "";
+            this.ajaxCargarDatosTabla();
+        }
+        
+        agregarParametroBusqueda(valor){
+            this.parametrosBusquedas = valor;
+        }
+	obtenerTodosLosCombobox(){
+            return this.combobox;
+        }
+        
+        completarComboboxExterno(elemento,nombreCombobox){
+            elemento.inneHTML = "";
+            var select = "";
+            var combobox = this.combobox;
+            var instanciaActual = this;
+            if(combobox.length==0){
+                setTimeout(function(){ 
+                    instanciaActual.completarComboboxExterno(elemento,nombreCombobox);
+                }, 500);
+            }
+            for(var key in combobox){
+                if(combobox[key].accion==nombreCombobox){
+                    select = document.createElement("option");
+                    this.agregarAtributo(select,"value","");
+                    this.agregarTextoTagHtml(select,"Seleccione");
+                    elemento.appendChild(select);
+                    for(var key2 in combobox[key].registros){
+                        var dato = combobox[key].registros;
+                        select = document.createElement("option");
+                        this.agregarAtributo(select,"value",dato[key2].Value);
+                        this.agregarTextoTagHtml(select,dato[key2].DisplayText);
+                        elemento.appendChild(select);
+                    }
+                }
+            }
+        }
+        quitarEliminar(value){
+            this.quitarBotonEliminar = value
+        }
+        
+        quitarEditar(valor){
+            this.quitarBotonEditar = valor;
+        }
 	agregarCoockieSinRepetir(campo,valor){
 		//console.log(this.coockies);
 		for(var key in this.coockies){
@@ -147,9 +204,9 @@ class tablaCrud{
 			var grip = document.createElement('div');
 			grip.innerHTML = "&nbsp;";
 			grip.style.top = 0;
-			grip.style.right = 0;
+			grip.style.right = '-5px';
 			grip.style.bottom = 0;
-			grip.style.width = '5px';
+			grip.style.width = '10px';
 			grip.style.position = 'absolute';
 			grip.style.cursor = 'col-resize';
 			grip.addEventListener('mousedown', function (e) {
@@ -234,7 +291,7 @@ class tablaCrud{
 	
 	crearTabla(){
 		if(this.quitarBotonAgregar==false){
-			this.botonesmenuSuperior.push({ nombreBoton : "+ agregar", funcionEspecial : "agregar"});
+			this.botonesmenuSuperior.push({ nombreBoton : " agregar", funcionEspecial : "agregar", icono : "plus"});
 		}
 		
 		this.contenedor.innerHTML = "";//Limpiamos el div de cualquier objeto
@@ -251,12 +308,22 @@ class tablaCrud{
 		var fila = document.createElement("tr");
 		var columna = document.createElement("th");
 		var colspan = document.createAttribute("colspan");// Crear atributo colspan
-		colspan.value = this.columnas.length+2;// Establecer el valor de colspan
+                var cantidadColumnas = this.columnas.length;
+                if(this.quitarBotonEliminar==false){
+                    cantidadColumnas++;
+                }
+                if(this.quitarBotonEditar==false){
+                    cantidadColumnas++;
+                }
+		colspan.value = cantidadColumnas;// Establecer el valor de colspan
 		columna.setAttributeNode(colspan);//Agregar el atributo colspan a th
 		this.agregarAtributo(fila,"class","table-thead-tabla");
-
+		
+		var h6 = document.createElement("h6");
 		var nombreColumna = document.createTextNode(this.tituloTabla);
-		columna.appendChild(nombreColumna);
+		h6.appendChild(nombreColumna);
+		this.agregarAtributo(h6,"style","position:absolute;");
+		columna.appendChild(h6);
 		
 		//Agregar botones a cabecera tabla
 		var divBotonSuperior = document.createElement("div");
@@ -280,6 +347,14 @@ class tablaCrud{
 			
 			if(this.botonesmenuSuperior[x].funcionEspecial!=null){ //Si se le quiere agregar una clase adicional
 				this.agregarAtributo(botonSuperior,"funcion-especial",this.botonesmenuSuperior[x].funcionEspecial);
+			}
+                        
+                        if(this.botonesmenuSuperior[x].icono!=null){ //Si se le quiere agregar una clase adicional
+                                var path = document.createElement("i");
+				this.agregarAtributo(path,"class","fa fa-"+this.botonesmenuSuperior[x].icono);
+				
+				botonSuperior.appendChild(path);
+				
 			}
 			if(this.botonesmenuSuperior[x].onClick!=null) this.agregarAtributo(botonSuperior,"onclick",this.botonesmenuSuperior[x].onClick);//sirve para llamar a una funcion
 			this.agregarTextoTagHtml(botonSuperior, this.botonesmenuSuperior[x].nombreBoton);
@@ -361,9 +436,11 @@ class tablaCrud{
 				//console.log("Agregando "+indiceColumna);
 				this.columnas[x].indice = indiceColumna;
 				columna = document.createElement("th");
+                                
 				if(this.classTheadTh!=null) columna.classList.add(this.classTheadTh);
 				
 				nombreColumna = document.createTextNode(this.columnas[x].nombre+" ");
+                                
 				var iconoSorting = document.createElement("span");
 				this.agregarAtributo(iconoSorting,"align","true");
 				this.agregarAtributo(iconoSorting,"focusable","right");
@@ -385,38 +462,24 @@ class tablaCrud{
 		
 		//Columna editar
 		//this.columnas[x].indice = indiceColumna;
-		columna = document.createElement("th");
-		if(this.classTheadTh!=null) columna.classList.add(this.classTheadTh);
-		
-		/*var iconoSorting = document.createElement("span");
-		this.agregarAtributo(iconoSorting,"align","true");
-		this.agregarAtributo(iconoSorting,"focusable","right");
-		var path = document.createElement("i");
-		this.agregarAtributo(path,"class","fa fa-trash");
-		
-		iconoSorting.appendChild(path);*/
-		//columna.appendChild(nombreColumna);
-		//columna.appendChild(iconoSorting);
-		fila.appendChild(columna);
-		indiceColumna++;
+                if(this.quitarBotonEditar==false){
+                     columna = document.createElement("th");
+                    if(this.classTheadTh!=null) columna.classList.add(this.classTheadTh);
+                    fila.appendChild(columna);
+                    indiceColumna++;
+                }
+		if(this.quitarBotonEliminar==false){
+                    columna = document.createElement("th");
+                    if(this.classTheadTh!=null) columna.classList.add(this.classTheadTh);
+                    fila.appendChild(columna);
+                    indiceColumna++;
+                }
+               
 		//fin columna editar
 		
 		//Columna eliminar
 		//this.columnas[x].indice = indiceColumna;
-		columna = document.createElement("th");
-		if(this.classTheadTh!=null) columna.classList.add(this.classTheadTh);
 		
-		/*var iconoSorting = document.createElement("span");
-		this.agregarAtributo(iconoSorting,"align","true");
-		this.agregarAtributo(iconoSorting,"focusable","right");
-		var path = document.createElement("i");
-		this.agregarAtributo(path,"class","fa fa-trash");
-		
-		iconoSorting.appendChild(path);*/
-		//columna.appendChild(nombreColumna);
-		//columna.appendChild(iconoSorting);
-		fila.appendChild(columna);
-		indiceColumna++;
 		//fin columna eliminar
 		
 		tblHead.appendChild(fila);
@@ -580,13 +643,21 @@ class tablaCrud{
 			for(var keyColumna in columnas){
 				var datoColumna = columnas[keyColumna];
 				var nombreCampoBd = datoColumna.aliasJson;
-				this.datoRegistro = dato[nombreCampoBd];
+                                if(dato[nombreCampoBd]==undefined){//Si no se hace esto, en caso que no venga el parametro se imprimira mal
+                                    this.datoRegistro = "";
+                                }else{
+                                    this.datoRegistro = dato[nombreCampoBd];
+                                }
+				
 				//console.log("mostrar "+dato);
 				//console.log("key "+nombreCampoBd);
-				
+				//console.log("Mostrando");
+                                //console.log(datoColumna);
 				if(this.datoRegistro != undefined && datoColumna.listar == true){
 						var columna = document.createElement("td");
-						
+                                                
+						if(this.columnas[keyColumna].atributoHtml!=null) this.agregarAtributo(columna,this.columnas[keyColumna].atributoHtml.propiedad,this.columnas[keyColumna].atributoHtml.valor);
+                                                
 						var checkbox = this.obtenerBotonOcultarColumnas().getElementsByTagName("a")[indiceTablaColumna].getElementsByTagName("div")[0].getElementsByTagName("input")[0].checked;
 						if(checkbox==true){
 							//console.log("Fila numero "+keyColumna+" visible");
@@ -639,32 +710,45 @@ class tablaCrud{
 					}
 				}
 			}
-			//Agregar filas modificar
-			columna = document.createElement("td");
-			var iconoSorting = document.createElement("span");
-			this.agregarAtributo(iconoSorting,"align","true");
-			this.agregarAtributo(iconoSorting,"focusable","right");
-			this.agregarAtributo(iconoSorting,"style","cursor:pointer;");
-			this.agregarAtributo(iconoSorting,"pk",pk);
-			var path = document.createElement("i");
-			this.agregarAtributo(path,"class","fa fa-edit fa-lg");
+                        //console.log("this.quitarBotonEditar = "+this.quitarBotonEditar);
+                        if(this.quitarBotonEditar==false){
+                            //console.log("Agregando boton editar");
+                            //Agregar filas modificar
+                            columna = document.createElement("td");
+                            this.agregarAtributo(columna,"class","anchoEditar");
+                            var iconoSorting = document.createElement("span");
+                            this.agregarAtributo(iconoSorting,"align","true");
+                            this.agregarAtributo(iconoSorting,"focusable","right");
+                            this.agregarAtributo(iconoSorting,"style","cursor:pointer;");
+                            this.agregarAtributo(iconoSorting,"pk",pk);
+                            var path = document.createElement("i");
+                            //this.agregarAtributo(path,"class","");
+                            this.agregarAtributo(path,"class","fa fa-edit fa-lg editarEliminarIcono");
+
+                            iconoSorting.appendChild(path);
+                            columna.appendChild(iconoSorting);
+                            fila.appendChild(columna);
+                        }
+			//console.log("this.quitarBotonEliminar = "+this.quitarBotonEliminar);
+                        if(this.quitarBotonEliminar==false){
+                            //console.log("Agregando boton eliminar");
+                            //Agregar filas eliminar
+                            columna = document.createElement("td");
+                            this.agregarAtributo(columna,"class","anchoEliminar");
+                            var iconoSorting = document.createElement("span");
+                            this.agregarAtributo(iconoSorting,"align","true");
+                            this.agregarAtributo(iconoSorting,"focusable","right");
+                            this.agregarAtributo(iconoSorting,"style","cursor:pointer;");
+                            this.agregarAtributo(iconoSorting,"pk",pk);
+                            var path = document.createElement("i");
+                            //this.agregarAtributo(path,"class","");
+                            this.agregarAtributo(path,"class","fa fa-trash fa-lg editarEliminarIcono");
+
+                            iconoSorting.appendChild(path);
+                            columna.appendChild(iconoSorting);
+                            fila.appendChild(columna);
+                        }
 			
-			iconoSorting.appendChild(path);
-			columna.appendChild(iconoSorting);
-			fila.appendChild(columna);
-			//Agregar filas eliminar
-			columna = document.createElement("td");
-			var iconoSorting = document.createElement("span");
-			this.agregarAtributo(iconoSorting,"align","true");
-			this.agregarAtributo(iconoSorting,"focusable","right");
-			this.agregarAtributo(iconoSorting,"style","cursor:pointer;");
-			this.agregarAtributo(iconoSorting,"pk",pk);
-			var path = document.createElement("i");
-			this.agregarAtributo(path,"class","fa fa-trash fa-lg");
-			
-			iconoSorting.appendChild(path);
-			columna.appendChild(iconoSorting);
-			fila.appendChild(columna);
 			
 			
 			
@@ -994,29 +1078,67 @@ class tablaCrud{
 			//console.log(keyFila);
 			if(keyFila<filas.length){
 				if(tr.getElementsByTagName("td")!=undefined){
-				var cantidadTd = tr.getElementsByTagName("td").length;
-				var td = tr.getElementsByTagName("td");
-				
-				//Boton editar
-				td[cantidadTd-2].getElementsByTagName("span")[0].addEventListener("click", function(){
-					var id = this.getAttribute("pk");
-					//console.log("Modificar "+id);
-					//console.log(instanciaActual.formulario_modificar(id));
-					instanciaActual.popup(instanciaActual.formulario_modificar(id),"modificar",id);
-				});
-				//Boton eliminar
-				td[cantidadTd-1].getElementsByTagName("span")[0].addEventListener("click", function(){
-					var id = this.getAttribute("pk");
-					console.log("Eliminar "+id);
-					bootbox.confirm("¿Estas seguro(a) que desea eliminar el siguiente registro? "+id, function(result){
-						if(result==true){
-							var datosFormulario = new FormData();
-							datosFormulario.append("accion", "eliminar");
-							datosFormulario.append("pk", id);
-							instanciaActual.ajaxGuardarModificar(datosFormulario,"eliminar",id);
-						}
-					});
-				});
+                                    var cantidadTd = tr.getElementsByTagName("td").length;
+                                    var td = tr.getElementsByTagName("td");
+                                       
+                                    //console.log("cantidad de td "+cantidadTd);
+                                    //console.log(tr);
+                                   
+                                    for(var keyB in td){
+                                        var boton = td[keyB].className;
+                                        if(boton=="anchoEditar"){
+                                            td[keyB].getElementsByTagName("span")[0].addEventListener("click", function(){
+                                                    var id = this.getAttribute("pk");
+                                                    //console.log("Modificar "+id);
+                                                    //console.log(instanciaActual.formulario_modificar(id));
+                                                    instanciaActual.popup(instanciaActual.formulario_modificar(id),"modificar",id);
+                                            });
+                                        }
+                                        if(boton=="anchoEliminar"){
+                                            td[keyB].getElementsByTagName("span")[0].addEventListener("click", function(){
+                                                    var id = this.getAttribute("pk");
+                                                    //console.log("Eliminar "+id);
+                                                    bootbox.confirm("¿Estas seguro(a) que desea eliminar el siguiente registro? "+id, function(result){
+                                                            if(result==true){
+                                                                    var datosFormulario = new FormData();
+                                                                    datosFormulario.append("accion", "eliminar");
+                                                                    datosFormulario.append("pk", id);
+                                                                    instanciaActual.ajaxGuardarModificar(datosFormulario,"eliminar",id);
+                                                            }
+                                                    });
+                                            });
+                                        }
+                                    }
+                                    /*//Boton editar
+                                    if(this.quitarBotonEditar==false){
+                                        if(td[cantidadTd-2].getElementsByTagName("span")[0]!=undefined){
+                                            td[cantidadTd-2].getElementsByTagName("span")[0].addEventListener("click", function(){
+                                                    var id = this.getAttribute("pk");
+                                                    //console.log("Modificar "+id);
+                                                    //console.log(instanciaActual.formulario_modificar(id));
+                                                    instanciaActual.popup(instanciaActual.formulario_modificar(id),"modificar",id);
+                                            });
+                                        }
+                                        
+                                    }
+                                    //Boton eliminar
+                                    if(this.quitarBotonEliminar==false){
+                                        if(td[cantidadTd-1].getElementsByTagName("span")[0]!=undefined){
+                                            td[cantidadTd-1].getElementsByTagName("span")[0].addEventListener("click", function(){
+                                                    var id = this.getAttribute("pk");
+                                                    console.log("Eliminar "+id);
+                                                    bootbox.confirm("¿Estas seguro(a) que desea eliminar el siguiente registro? "+id, function(result){
+                                                            if(result==true){
+                                                                    var datosFormulario = new FormData();
+                                                                    datosFormulario.append("accion", "eliminar");
+                                                                    datosFormulario.append("pk", id);
+                                                                    instanciaActual.ajaxGuardarModificar(datosFormulario,"eliminar",id);
+                                                            }
+                                                    });
+                                            });
+                                        }
+                                        
+                                    }*/
 				}
 			}
 		}
@@ -1078,9 +1200,9 @@ class tablaCrud{
 		var instanciaActual = this;
 		var cliente = new XMLHttpRequest();
 		cliente.open("POST", url, true);
-		cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+		//cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 		
-		
+		//cliente.setRequestHeader("Content-Type", "multipart/form-data");
 		
 		
 		cliente.upload.addEventListener('progress', function(e){//Esto es al subir un archivo
@@ -1101,88 +1223,97 @@ class tablaCrud{
 			//progressBar.value = pe.loaded
 			//console.log(pe);
 		}
-		cliente.onreadystatechange = function(datos) {
+		cliente.onreadystatechange = function() {
 			var progressBar = instanciaActual.contenedor.getElementsByTagName("table")[0].getElementsByTagName("tbody")[0].getElementsByTagName("tr")[0].getElementsByTagName("td")[0].getElementsByTagName("div")[0].getElementsByTagName("div")[0];
-			
+			//console.log(this);
 			//var datosJson = JSON.parse(this.response);
 			try {
-                var datosJson = JSON.parse(this.response);
-            } catch (e){
-                var resp = {
-                    status: 'error',
-                    data: 'Unknown error occurred: [' + this.responseText + ']'
-                };
-            }
-			//console.log(JSON.stringify(datosJson));
-			if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
-				
-				if(datosJson.Resultado=="OK"){
-					//this.registrosBD[0].Registros = datosJson.Registros;
-					instanciaActual.agregarRegistrosBD(datosJson);
-				}else{
-					//console.log(this.response.Resultado);
-					progressBar.setAttribute("class","progress-bar bg-danger");
-					progressBar.innerHTML = instanciaActual.utf8_encode("Error : "+datosJson.Message+"");
-				}
-			}else if(this.status === 400){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud no se puede cumplir debido a una mala sintaxis, intentelo nuevamente ");
-			}else if(this.status === 401){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud fue legal, pero el servidor se niega a responder. Para usar cuando la autenticación es posible pero ha fallado o aún no se ha proporcionado, intentelo nuevamente ");
-			}else if(this.status === 402){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": reservado para uso futuro, intentelo nuevamente ");
-			}else if(this.status === 403){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud fue legal, pero el servidor se niega a responder, intentelo nuevamente ");
-			}else if(this.status === 404){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": página no encontrada, intentelo nuevamente ");
-			}else if(this.status === 405){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": Se realizó una solicitud de una página utilizando un método de solicitud no admitido por esa página, intentelo nuevamente ");
-			}else if(this.status === 406){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor solo puede generar una respuesta que no es aceptada por el cliente, intentelo nuevamente ");
-			}else if(this.status === 407){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El cliente primero debe autenticarse con el proxy, intentelo nuevamente ");
-			}else if(this.status === 408){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor agotó el tiempo de espera para la solicitud, intentelo nuevamente ");
-			}else if(this.status === 409){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud no se pudo completar debido a un conflicto en la solicitud, intentelo nuevamente ");
-			}else if(this.status === 410){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La página solicitada ya no está disponible., intentelo nuevamente ");
-			}else if(this.status === 411){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El 'Contenido-Longitud' no está definido. El servidor no aceptará la solicitud sin él., intentelo nuevamente ");
-			}else if(this.status === 412){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La condición previa dada en la solicitud evaluada en falso por el servidor, intentelo nuevamente ");
-			}else if(this.status === 413){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no aceptará la solicitud porque la entidad de solicitud es demasiado grande, intentelo nuevamente ");
-			}else if(this.status === 414){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no aceptará la solicitud, porque la URL es demasiado larga. Ocurre cuando convierte una solicitud POST a una solicitud GET con una información de consulta larga, intentelo nuevamente ");
-			}else if(this.status === 415){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no aceptará la solicitud, porque el tipo de medio no es compatible, intentelo nuevamente ");
-			}else if(this.status === 416){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El cliente ha solicitado una parte del archivo, pero el servidor no puede suministrar esa parte, intentelo nuevamente ");
-			}else if(this.status === 417){
-				progressBar.setAttribute("class","progress-bar bg-danger");
-				progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no puede cumplir los requisitos del campo Esperar encabezado de solicitud, intentelo nuevamente ");
-			}
+                            var datosJson = JSON.parse(this.response);
+                            
+                            //console.log(this.readyState+' === '+4+' && '+this.status+' === '+200);
+                            if (this.readyState === 4 && this.status === 200) {
+                                    //console.log("Entro");
+                                    if(datosJson.Resultado=="OK"){
+                                            //this.registrosBD[0].Registros = datosJson.Registros;
+                                            instanciaActual.agregarRegistrosBD(datosJson);
+                                    }else if(datosJson.Resultado=="ERROR"){
+                                            //console.log(datosJson.Message);
+                                            progressBar.setAttribute("class","progress-bar bg-danger");
+                                            progressBar.innerHTML = instanciaActual.utf8_encode("Error : "+datosJson.Message+"");
+                                    }
+                            }else if(this.status === 400){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud no se puede cumplir debido a una mala sintaxis, intentelo nuevamente ");
+                            }else if(this.status === 401){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud fue legal, pero el servidor se niega a responder. Para usar cuando la autenticación es posible pero ha fallado o aún no se ha proporcionado, intentelo nuevamente ");
+                            }else if(this.status === 402){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": reservado para uso futuro, intentelo nuevamente ");
+                            }else if(this.status === 403){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud fue legal, pero el servidor se niega a responder, intentelo nuevamente ");
+                            }else if(this.status === 404){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": página no encontrada, intentelo nuevamente ");
+                            }else if(this.status === 405){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": Se realizó una solicitud de una página utilizando un método de solicitud no admitido por esa página, intentelo nuevamente ");
+                            }else if(this.status === 406){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor solo puede generar una respuesta que no es aceptada por el cliente, intentelo nuevamente ");
+                            }else if(this.status === 407){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El cliente primero debe autenticarse con el proxy, intentelo nuevamente ");
+                            }else if(this.status === 408){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor agotó el tiempo de espera para la solicitud, intentelo nuevamente ");
+                            }else if(this.status === 409){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La solicitud no se pudo completar debido a un conflicto en la solicitud, intentelo nuevamente ");
+                            }else if(this.status === 410){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La página solicitada ya no está disponible., intentelo nuevamente ");
+                            }else if(this.status === 411){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El 'Contenido-Longitud' no está definido. El servidor no aceptará la solicitud sin él., intentelo nuevamente ");
+                            }else if(this.status === 412){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": La condición previa dada en la solicitud evaluada en falso por el servidor, intentelo nuevamente ");
+                            }else if(this.status === 413){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no aceptará la solicitud porque la entidad de solicitud es demasiado grande, intentelo nuevamente ");
+                            }else if(this.status === 414){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no aceptará la solicitud, porque la URL es demasiado larga. Ocurre cuando convierte una solicitud POST a una solicitud GET con una información de consulta larga, intentelo nuevamente ");
+                            }else if(this.status === 415){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no aceptará la solicitud, porque el tipo de medio no es compatible, intentelo nuevamente ");
+                            }else if(this.status === 416){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El cliente ha solicitado una parte del archivo, pero el servidor no puede suministrar esa parte, intentelo nuevamente ");
+                            }else if(this.status === 417){
+                                    progressBar.setAttribute("class","progress-bar bg-danger");
+                                    progressBar.innerHTML = instanciaActual.utf8_encode("Error "+this.status+": El servidor no puede cumplir los requisitos del campo Esperar encabezado de solicitud, intentelo nuevamente ");
+                            }
+                        } catch (e){
+                           
+                            progressBar.setAttribute("class","progress-bar bg-danger");
+                            progressBar.innerHTML = instanciaActual.utf8_encode("Error : "+this.responseText+"");
+                        }
 		}
-		
-		cliente.send("accion=listar&jtStartIndex="+instanciaActual.jtStartIndex+"&jtPageSize="+instanciaActual.jtPageSize+"&jtSorting="+instanciaActual.jtSorting);
-	}
+		var datosFormulario = new FormData();
+                datosFormulario.append("accion","listar");
+                datosFormulario.append("jtStartIndex", instanciaActual.jtStartIndex);
+                datosFormulario.append("jtPageSize", instanciaActual.jtPageSize);
+                datosFormulario.append("jtSorting", instanciaActual.jtSorting);
+                
+                for(var key in instanciaActual.parametrosBusquedas){
+                    datosFormulario.append(key, instanciaActual.parametrosBusquedas[key]);
+                }
+		//cliente.send("accion=listar&jtStartIndex="+instanciaActual.jtStartIndex+"&jtPageSize="+instanciaActual.jtPageSize+"&jtSorting="+instanciaActual.jtSorting);
+                cliente.send(datosFormulario);
+        }
 	utf8_encode(s) {
 	  return s;
 	}
@@ -1191,7 +1322,8 @@ class tablaCrud{
 		var instanciaActual = this;
 		var cliente = new XMLHttpRequest();
 		cliente.open("POST", url, true);
-		cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+		//cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                //cliente.setRequestHeader("Content-Type", "multipart/form-data");
 		
 		cliente.onerror = function () {
 			bootbox.alert("Error : "+this.status+", al cargar, intentelo nuevamente ");
@@ -1253,8 +1385,10 @@ class tablaCrud{
 			//console.log(JSON.stringify(datosJson));
 			
 		}
-		
-		cliente.send("accion="+accion);
+		var datosFormulario = new FormData();
+                datosFormulario.append("accion",accion);
+		//cliente.send("accion="+accion);
+                cliente.send(datosFormulario);
 	}
 	barraProgreso(pe, mensaje){
 		//console.log(pe);
@@ -1369,7 +1503,11 @@ class tablaCrud{
 											for(var keyRegistros in this.combobox[keyCombo].registros){
 												//Acá estan los registros del combobox
 												//console.log(this.combobox[keyCombo].registros[keyRegistros].Value+'=='+datos[this.columnas[keyColumna].aliasJson]);
-												if(this.combobox[keyCombo].registros[keyRegistros].Value==datos[this.columnas[keyColumna].aliasJson]){
+                                                                                                var valorSelect = datos[this.columnas[keyColumna].aliasJson];
+                                                                                                if(valorSelect==undefined || valorSelect==null){
+                                                                                                    valorSelect = "";
+                                                                                                }    
+												if(this.combobox[keyCombo].registros[keyRegistros].Value==valorSelect){
 													html += '<option value="'+this.combobox[keyCombo].registros[keyRegistros].Value+'" selected>'+this.combobox[keyCombo].registros[keyRegistros].DisplayText+'</option>';
 												}else{
 													html += '<option value="'+this.combobox[keyCombo].registros[keyRegistros].Value+'">'+this.combobox[keyCombo].registros[keyRegistros].DisplayText+'</option>';
@@ -1380,14 +1518,18 @@ class tablaCrud{
 									
 									html += '	</select>';
 								} else if(this.columnas[keyColumna].inputPersonalizadoIngresar!=null){
-									html += '	'+this.columnas[keyColumna].inputPersonalizadoIngresar(this.columnas[keyColumna].nombre);
+									html += '	'+this.columnas[keyColumna].inputPersonalizadoIngresar(this.columnas[keyColumna].nombre,datos);
 								} else if(this.columnas[keyColumna].archivo!=null && this.columnas[keyColumna].archivo == true){
 									if(this.columnas[keyColumna].vistaPreviaModificar!=null){
 										html += this.columnas[keyColumna].vistaPreviaModificar(datos);
 									}
 									html += '	<input type="file" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" accept="image/*">';
 								}else{
-									html += '	<input type="text" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="'+datos[this.columnas[keyColumna].aliasJson]+'" required>';
+                                                                        var valorDato = datos[this.columnas[keyColumna].aliasJson];
+                                                                        if(valorDato==undefined || valorDato==null){
+                                                                            valorDato = "";
+                                                                        }
+									html += '	<input type="text" class="form-control form-control-sm" id="'+this.columnas[keyColumna].nombre+'" name="'+this.columnas[keyColumna].nombre+'" placeholder="'+this.columnas[keyColumna].nombre+'" value="'+valorDato+'" required>';
 								}
 								
 								html += '	<div class="valid-feedback" id="frm-validacion-'+this.columnas[keyColumna].nombre+'"></div>';
@@ -1764,44 +1906,54 @@ class tablaCrud{
 						var campo = formulariop.elements[i];
 						var nombreCampo = campo.name;
 						var valorCampo = campo.value;
+                                                if(instanciaActual.columnas[keyColumna].elementoALaEscuchaFormulario!=null){
+                                                    instanciaActual.columnas[keyColumna].elementoALaEscuchaFormulario();
+                                                }
+                                                
 						//No repetir datos ajax
 						if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
 							//instanciaActual.ajaxDatosSinRepetir(instanciaActual.columnas[keyColumna].validacionAjax,pk);
 							var validacion = instanciaActual.columnas[keyColumna].validacionAjax;
 							var indiceValidacion = keyColumna;
+                                                        
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",indiceValidacion);
 							campo.addEventListener("blur", function(){
 								if(this.value.length==0){//Si el campo esta en vacio no se validara y el estilo quedara normal
 									this.setAttribute("class", "form-control form-control-sm");
 									document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 								}else{
-									instanciaActual.ajaxDatosSinRepetir(indiceValidacion,validacion,this,pk,formulariop);
+									instanciaActual.ajaxDatosSinRepetir(this.getAttribute("indice-validacion"),instanciaActual.columnas[this.getAttribute("indice-validacion")].validacionAjax,this,pk,formulariop);
 								}	
 							});
 						}
 						if(instanciaActual.columnas[keyColumna].onblur!=null){
 							var funcion = instanciaActual.columnas[keyColumna].onblur;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("blur", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].onblur(this);
 							});
 						}
 						if(instanciaActual.columnas[keyColumna].keyPress!=null){
 							var funcion = instanciaActual.columnas[keyColumna].keyPress;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("keypress", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].keyPress(this);
 							});
 						} 
 						
 						if(instanciaActual.columnas[keyColumna].keyUp!=null){
 							var funcion = instanciaActual.columnas[keyColumna].keyUp;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("keyup", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].keyUp(this);
 							});
 						}
 						
 						if(instanciaActual.columnas[keyColumna].keyDown!=null){
 							var funcion = instanciaActual.columnas[keyColumna].keyDown;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("keydown", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].keyDown(this);
 							});
 						}
 						//Fin no repetir datos ajax
@@ -2076,44 +2228,52 @@ class tablaCrud{
 						var campo = formulariop.elements[i];
 						var nombreCampo = campo.name;
 						var valorCampo = campo.value;
+                                                if(instanciaActual.columnas[keyColumna].elementoALaEscuchaFormulario!=null){
+                                                    instanciaActual.columnas[keyColumna].elementoALaEscuchaFormulario();
+                                                }
 						//No repetir datos ajax
 						if(instanciaActual.columnas[keyColumna].validacionAjax!=null){
 							//instanciaActual.ajaxDatosSinRepetir(instanciaActual.columnas[keyColumna].validacionAjax,pk);
 							var validacion = instanciaActual.columnas[keyColumna].validacionAjax;
 							var indiceValidacion = keyColumna;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",indiceValidacion);
 							campo.addEventListener("blur", function(){
 								if(this.value.length==0){//Si el campo esta en vacio no se validara y el estilo quedara normal
 									this.setAttribute("class", "form-control form-control-sm");
 									document.getElementById("frm-validacion-"+nombreCampo).setAttribute("class","valid-feedback");
 								}else{
-									instanciaActual.ajaxDatosSinRepetir(indiceValidacion,validacion,this,null,formulariop);
+									instanciaActual.ajaxDatosSinRepetir(this.getAttribute("indice-validacion"),instanciaActual.columnas[this.getAttribute("indice-validacion")].validacionAjax,this,null,formulariop);
 								}	
 							});
 						}
 						if(instanciaActual.columnas[keyColumna].onblur!=null){
 							var funcion = instanciaActual.columnas[keyColumna].onblur;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("blur", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].onblur(this);
 							});
 						}
 						if(instanciaActual.columnas[keyColumna].keyPress!=null){
 							var funcion = instanciaActual.columnas[keyColumna].keyPress;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("keypress", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].keyPress(this);
 							});
 						} 
 						
 						if(instanciaActual.columnas[keyColumna].keyUp!=null){
 							var funcion = instanciaActual.columnas[keyColumna].keyUp;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("keyup", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].keyUp(this);
 							});
 						}
 						
 						if(instanciaActual.columnas[keyColumna].keyDown!=null){
 							var funcion = instanciaActual.columnas[keyColumna].keyDown;
+                                                        instanciaActual.agregarAtributo(campo,"indice-validacion",keyColumna);
 							campo.addEventListener("keydown", function(){
-								funcion(this);
+								instanciaActual.columnas[this.getAttribute("indice-validacion")].keyDown(this);
 							});
 						}
 						//Fin no repetir datos ajax
@@ -2154,11 +2314,12 @@ class tablaCrud{
 		}
 	}	
 	ajaxDatosSinRepetir(indiceValidacion,parametosValidacion,campo, pk, formulario){//instanciaActual.columnas[keyColumna].validacionAjax,campo,pk
+                
 		var datosFila = this.buscarRegistros(pk);
 		var instanciaActual = this;
 		var cliente = new XMLHttpRequest();
 		cliente.open("POST", parametosValidacion().url, true);
-		cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+		//cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 		
 		cliente.onerror = function () {
 			bootbox.alert("Error : "+this.status+", al cargar, intentelo nuevamente ");
@@ -2175,9 +2336,9 @@ class tablaCrud{
 						
 						var respuesta = null;
 						if(pk!=null){
-							respuesta = parametosValidacion().validacion(datosJson.Registros,datosFila,campo.value,formulario, pk);
+							respuesta = parametosValidacion().validacion(datosJson.Registros,datosFila,campo.value,formulario, pk,datosJson);
 						}else{
-							respuesta = parametosValidacion().validacion(datosJson.Registros,null,campo.value,formulario, null);
+							respuesta = parametosValidacion().validacion(datosJson.Registros,null,campo.value,formulario, null,datosJson);
 						}
 						
 						if(respuesta.resultado == false){
@@ -2240,6 +2401,7 @@ class tablaCrud{
 			//console.log(JSON.stringify(datosJson));
 			
 		}
+                
 		var datoEnviar = null;
 		if(pk!=null){
 			datoEnviar = datosFila[parametosValidacion().datoEnviar];
@@ -2247,7 +2409,13 @@ class tablaCrud{
 			datoEnviar = null;
 		}
 		var nombreDatoEnviar = parametosValidacion().datoEnviar;
-		cliente.send("accion="+parametosValidacion().accion+"&"+nombreDatoEnviar+"="+datoEnviar+"&valorCampo="+campo.value);
+                var datosFormulario = new FormData();
+                datosFormulario.append("accion",parametosValidacion().accion);
+                datosFormulario.append(nombreDatoEnviar, datoEnviar);
+                datosFormulario.append(campo.name, campo.value);
+                
+		//cliente.send("accion="+parametosValidacion().accion+"&"+nombreDatoEnviar+"="+datoEnviar+"&valorCampo="+campo.value);
+                cliente.send(datosFormulario);
 	}
 	
 	ajaxGuardarModificar(frm,accion,pk){
@@ -2255,7 +2423,7 @@ class tablaCrud{
 		var instanciaActual = this;
 		var cliente = new XMLHttpRequest();
 		cliente.open("POST", url, true);
-		//cliente.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+		//cliente.setRequestHeader("Content-Type", "multipart/form-data");
 		cliente.upload.addEventListener('progress', function(e){//Esto es al subir un archivo
 			instanciaActual.barraprogresoGuardarModificar(e,"subiendo","frm-barra-progreso");
 		}, false);
@@ -2291,14 +2459,19 @@ class tablaCrud{
 					bootbox.hideAll();
 					instanciaActual.cargarDatos();
 				}else{
+                                        if(accion=="eliminar"){
+                                            bootbox.alert("Error : "+datosJson.Message);
+                                        }else{
+                                            progressBar.attr("class","progress-bar bg-danger");
+                                            progressBar.html("Error : "+datosJson.Message+"");
+                                            var botonGuardar = $(".guardar-frm");
+                                            botonGuardar.html("Reintentar Guardar");
+                                            botonGuardar.prop('disabled', false);
+                                            var botonCancelar = $(".cancelar-frm");
+                                            botonCancelar.prop('disabled', false);
+                                        }
 					//console.log(this.response.Resultado);
-					progressBar.attr("class","progress-bar bg-danger");
-					progressBar.html("Error : "+datosJson.Message+"");
-					var botonGuardar = $(".guardar-frm");
-					botonGuardar.html("Reintentar Guardar");
-					botonGuardar.prop('disabled', false);
-					var botonCancelar = $(".cancelar-frm");
-					botonCancelar.prop('disabled', false);
+					
 				}
 			}else if(this.status === 400){
 				mensajeError = instanciaActual.utf8_encode("Error "+this.status+": La solicitud no se puede cumplir debido a una mala sintaxis, intentelo nuevamente ");
@@ -2345,4 +2518,53 @@ class tablaCrud{
 		//Enviar ajax
 		cliente.send(frm);
 	}
+        
+        checkRut(rut) {
+            // Despejar Puntos
+            var valor = rut.value.replace('.','');
+            // Despejar Guión
+            valor = valor.replace('-','');
+
+            // Aislar Cuerpo y Dígito Verificador
+            var cuerpo = valor.slice(0,-1);
+            var dv = valor.slice(-1).toUpperCase();
+
+            // Formatear RUN
+            rut.value = cuerpo + '-'+ dv
+
+            // Si no cumple con el mínimo ej. (n.nnn.nnn)
+            if(cuerpo.length < 7) { rut.setCustomValidity("RUT Incompleto"); return false;}
+
+            // Calcular Dígito Verificador
+            var suma = 0;
+            var multiplo = 2;
+
+            // Para cada dígito del Cuerpo
+            for(var i=1;i<=cuerpo.length;i++) {
+
+                // Obtener su Producto con el Múltiplo Correspondiente
+                var index = multiplo * valor.charAt(cuerpo.length - i);
+
+                // Sumar al Contador General
+                suma = suma + index;
+
+                // Consolidar Múltiplo dentro del rango [2,7]
+                if(multiplo < 7) { multiplo = multiplo + 1; } else { multiplo = 2; }
+
+            }
+
+            // Calcular Dígito Verificador en base al Módulo 11
+            var dvEsperado = 11 - (suma % 11);
+
+            // Casos Especiales (0 y K)
+            dv = (dv == 'K')?10:dv;
+            dv = (dv == 0)?11:dv;
+
+            // Validar que el Cuerpo coincide con su Dígito Verificador
+            if(dvEsperado != dv) { rut.setCustomValidity("RUT Inválido"); return false; }
+
+            // Si todo sale bien, eliminar errores (decretar que es válido)
+            rut.setCustomValidity('');
+            return true;
+        }
 }
